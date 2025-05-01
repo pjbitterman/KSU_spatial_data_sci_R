@@ -5,11 +5,11 @@ paginate: true
 #footer: Week 16.wrap-up
 ---
 
-# GEOG 491/891: Special Topics - Spatial Analysis in R
+# GEOG 4/5/7 9073: Environmental Analysis in R
 
 ## 
 
-## Week 16: Course refleciton and wrap-up
+## Week 16: Course reflection and wrap-up
 
 ### Dr. Bitterman
 
@@ -53,29 +53,16 @@ paginate: true
 # More 
 
 - Spatial operations
-- Proxmity analysis
+- Proximity analysis
 - Queries
     - Tabular
     - Spatial
-- How geometries work, creation, analysis
 - Raster manipulation
 - Raster math
 - Autocorrelation
 - Static maps
 - Interactive maps
-
----
-
-# Part 2:
-
-- Open source Python spatial data analysis and frameworks
-- What's a data frame, what's a geodataframe
-- ESDA
-- How to make a map programmatically
-- Multilayer mapping
-- Spatial weights matrices, formalization of space, *W*
-- Spatial autocorrelation, global, local, LISAs
-- Aspatial clustering (kmeans)
+- Zonal statistics
 
 ---
 
