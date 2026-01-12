@@ -1,6 +1,6 @@
 ---
 title: "Environmental Data Analysis in R - Week 01.01"
-format:
+format: 
   revealjs:
     width: 1280
     height: 720
@@ -64,7 +64,7 @@ Pair up – and don’t leave anyone behind
 
 -   Dr. Patrick Bitterman
 -   Independence, IA -\> UIowa -\> UVM -\> UNL -\> KSU
--   Assistant Professor in Geography Department, 2nd/6th year
+-   Assistant Professor in Geography Department, 2nd/7th year
 -   Goals: teach a successful course, build my research program
 -   GIS experience? Programming experience? Extensive, but I don’t use ArcGIS much…
 -   Success in this course:
