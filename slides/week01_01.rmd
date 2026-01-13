@@ -1,18 +1,12 @@
 ---
-title: "Environmental Data Analysis in R - Week 01.01"
-format: 
-  revealjs:
-    width: 1280
-    height: 720
-
-editor: visual
+title:  "Week01.01"
+subtitle: "GEOG 4/5/7 9073: Environmental Analysis in R:"
+author: "Dr. Patrick Bitterman"
+date: "2026-01-13"
+output: 
+  ioslides_presentation:
+    css: styles.css
 ---
-
-## GEOG 4/5/7 9073: Environmental Analysis in R
-
-### Week 01.01: Introduction
-
-### Dr. Bitterman
 
 ## Today's schedule
 
@@ -112,7 +106,7 @@ Pair up – and don’t leave anyone behind
 
 -   Brunsdon, C., Comber, L. 2025. An Introduction to R for Spatial Analysis and Mapping (Spatial Analytics and GIS). 3rd Edition. SAGE. [Link](https://collegepublishing.sagepub.com/products/an-introduction-to-r-for-spatial-analysis-and-mapping-3-288946)
 
--   Optional: Wickham, H. 2017. R for Data Science: Import, Tidy, Transform, Visualize, and Model Data. O’Reilly Media. (if you are unfamiliar with R or other programming language) (<https://r4ds.had.co.nz/index.html)>
+-   Optional: Wickham, H. 2017. R for Data Science: Import, Tidy, Transform, Visualize, and Model Data. O’Reilly Media. (if you are unfamiliar with R or other programming language) [Link](https://r4ds.had.co.nz/index.html)
 
 ## Learning objectives
 
@@ -206,7 +200,7 @@ For graduate students, the requirements of the final project will be expanded to
     -   Don’t cheat
     -   Don’t plagiarize
 -   Health and safety
-    -   Student support services (<https://www.kent.edu/studentsupportservices)>
+    -   Student support services ([https://www.kent.edu/studentsupportservices)](https://www.kent.edu/studentsupportservices)){.uri}
 
 ## The Generative AI Elephant in the Room
 
@@ -214,11 +208,13 @@ For graduate students, the requirements of the final project will be expanded to
 
 -   ...and most of the time, it's even correct
 
-# For example
+### For example...
 
-![](images/claude.png)
+![](images/claude.png){width=80%}
 
-```{r}
+## Claude output
+
+```{r message=FALSE}
 #| echo: true
 library(tidyverse)
 # Create example data frames
@@ -272,7 +268,7 @@ In your opinion AND in the context of this class...
 
 ## R and RStudio: Understanding the Relationship {.smaller}
 
-R and RStudio are c[**omplementary but distinct tools**]{.underline} that work together for data analysis:
+R and RStudio are [**complementary but distinct tools**]{.underline} that work together for data analysis:
 
 ### **R**
 
@@ -281,6 +277,8 @@ R and RStudio are c[**omplementary but distinct tools**]{.underline} that work t
 -   performs all calculations, executes code, manages data structures, and produces outputs
 
 -   can run independently from the command line or terminal
+
+------------------------------------------------------------------------
 
 ### **RStudio**
 
@@ -366,13 +364,24 @@ Practice using RStudio by:
 4.  Viewing created objects in the Environment pane
 5.  Creating a simple plot and viewing it in the Plots pane
 
+---
+
 ```{r}
 #| echo: true
 x <- 1:10
-y <- rnorm(100, mean = 0, sd = 2)
 x
 x * 2
+
+```
+
+------------------------------------------------------------------------
+
+```{r}
+#| echo: true
+
+y <- rnorm(100, mean = 0, sd = 2)
 hist(y)
+
 ```
 
 ------------------------------------------------------------------------
