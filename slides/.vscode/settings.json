@@ -1,0 +1,6 @@
+{
+  "markdown.marp.html": true,
+  "marp.themes": [
+    "./ksu-ada.css"
+  ]
+}

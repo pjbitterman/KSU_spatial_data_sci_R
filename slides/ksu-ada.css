@@ -1,0 +1,120 @@
+/* @theme ksu-ada */
+/* Kent State University (KSU) inspired, accessibility-forward MARP theme
+   Primary colors per KSU brand swatches:
+   Blue #003976, Gold #EFAB00
+*/
+
+@import "default";
+
+/* ---------- Base slide ---------- */
+section {
+  background: #ffffff;
+  color: #111111;
+  padding: 64px 80px;
+  font-size: 32px;
+  line-height: 1.25;
+}
+
+/* Subtle brand bar for visual identity without harming contrast */
+section::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 10px;
+  width: 100%;
+  background: #003976; /* KSU blue */
+}
+
+/* ---------- Headings ---------- */
+h1, h2, h3 {
+  color: #003976; /* KSU blue */
+  letter-spacing: 0.2px;
+  margin: 0 0 0.35em 0;
+}
+
+h1 { font-size: 1.6em; }
+h2 { font-size: 1.15em; }
+h3 { font-size: 0.95em; color: #0b2f4a; } /* slightly darker variant for hierarchy */
+
+/* ---------- Links ---------- */
+a {
+  color: #003976;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- Lists ---------- */
+ul, ol {
+  margin-top: 0.4em;
+}
+li { margin: 0.25em 0; }
+
+/* ---------- Code ---------- */
+code {
+  background: #f3f5f7;
+  border: 1px solid #d6dde3;
+  border-radius: 6px;
+  padding: 0.08em 0.22em;
+  font-size: 0.9em;
+}
+
+pre {
+  background: #f3f5f7;
+  border: 1px solid #d6dde3;
+  border-left: 8px solid #003976; /* KSU blue */
+  border-radius: 10px;
+  padding: 16px 18px;
+  font-size: 0.78em;      /* good for classroom projectors */
+  line-height: 1.25;
+  overflow: auto;
+}
+
+/* ---------- Emphasis (use gold as an accent, not body text) ---------- */
+strong {
+  font-weight: 800;
+}
+
+/* Accent utility: apply to short labels or callouts only */
+.ksu-accent {
+  display: inline-block;
+  padding: 0.08em 0.35em;
+  border-radius: 8px;
+  background: #EFAB00;  /* KSU gold */
+  color: #111111;       /* keep text dark for contrast */
+  font-weight: 800;
+}
+
+/* ---------- Pagination (keep Marp's default bottom-left placement) ---------- */
+section .pagination {
+  color: #f2f2f2;   /* or #ffffff */
+  font-size: 0.55em;
+  z-index: 2;       /* above the blue bar */
+}
+
+/* ---------- Footer (force bottom-right) ---------- */
+section footer {
+  position: absolute;
+  right: 25px;
+  left: auto;       /* IMPORTANT: overrides Marp's default left alignment */
+  bottom: 8px;
+  color: #f2f2f2;   /* or #ffffff */
+  font-size: 0.55em;
+  z-index: 2;       /* above the blue bar */
+}
+
+
+
+/* ---------- Spacers (replacement for empty headings) ---------- */
+.spacer-xs { height: 0.5em; }
+.spacer-sm { height: 1em; }
+.spacer-md { height: 2em; }
+.spacer-lg { height: 3em; }
+
+/* ---------- Optional: two-column helper ---------- */
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  align-items: start;
+}
