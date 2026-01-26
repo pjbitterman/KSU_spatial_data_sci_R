@@ -2,10 +2,7 @@
 title: "Lab 01"
 #author: "Dr. Patrick Bitterman"
 #date: "`r format(Sys.time(), '%Y %B %d')`"
-output: 
-   pdf_document: 
-      template: my_template.tex
-      keep_tex: true
+output: pdf_document
 my_subtitle: "Env Analysis in R"
 fancy: true
 geometry: margin=1in
@@ -67,7 +64,7 @@ d.counties <- d.counties %>% sf::st_make_valid()
 
 ```
 
-In class, we discussed how to use dplyr verbs such as *filter*, *select*, and *mutate*. There are some useful cheatsheets on the RStudio website to help with *dplyr*, *ggplot*, and other functions here: https://www.rstudio.com/resources/cheatsheets/
+In class, we discussed how to use dplyr verbs such as *filter*, *select*, and *mutate*. There are some useful cheatsheets on the RStudio website to help with *dplyr*, *ggplot*, and other functions here: https://posit.co/resources/cheatsheets/
 
 Let's start with the *select* function, which SELECTS attributes that we specify:
 ```{r selecting stuff, message=TRUE, echo=TRUE}
@@ -75,7 +72,7 @@ d.counties %>% dplyr::select(GEOID10, ALAND10) %>% head()
 # head truncates the data.frame to the first n rows
 
 ```
-Note that because we're using a spatial data frame in the `sf` package, the geometry is preserved, even though we didn't specify it. We can also get rid of attributes we DON'T WANT (but not the geometry attribute) using a `-` flag. For example:
+Note that because we're using a spatial data frame in the `sf` package, the geometry is preserved, even though we didn't specify it. We can also get rid of attributes we DON'T WANT (but not the geometry attribute) using a `-` flag. For example, the following code "drops" the `NAME10` attribute:
 
 ```{r noname, message=TRUE, echo=TRUE}
 d.counties %>% dplyr::select(-NAME10) %>% head()
@@ -188,16 +185,16 @@ Complete each task COMPLETELY USING R CODE. YOU MUST SHOW YOUR WORK FOR EACH ANS
 
 1.3 Count the number of counties in each state
 
-1.4 Which station has the shortest name (STATION_NA) in the study area?
+1.4 Which station has the shortest name (`STATION_NA`) in the study area?
 
 ### Task 2: Plotting attribute data
 ...for each plot, label your axes properly and give your plot a title
 
 2.1 Make a scatterplot showing the relationship between land area and water area for each county. Color each point using the state variable
 
-2.2 Make a histogram of drainage area (Drainage_A) for all monitoring stations
+2.2 Make a histogram of drainage area (`Drainage_A`) for all monitoring stations
 
-2.3 Make a similar histogram of drainage area (Drainage_A) for all monitoring stations. This time, shade/color each portion of the histogram's bar(s) using the state variable
+2.3 Make a similar histogram of drainage area (`Drainage_A`) for all monitoring stations. This time, shade/color each portion of the histogram's bar(s) using the state variable
 
 ### Task 3: Write a function
 3.1 Write a function that does the following:
@@ -212,7 +209,7 @@ D. the function should only work with numeric values and print an error message 
 
 Test it with the following vectors
 
-`c(1, 0, -1), c(10, 100, 1000), c(.1, .001, 1e8), c("a", "b", "c")`
+`c(1, 0, -1), c(10, 1000, 100), c(.1, .001, 1e8), c("a", "b", "c")`
 
 ### Task 4: (slightly) more complex spatial analysis. 
 ...Note, you may need to find supplementary data to help you with these tasks
