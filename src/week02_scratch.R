@@ -4,7 +4,7 @@ library(tidyverse)
 library(terra)
 library(sf)
 
-mydf <- read_csv("./data/oh_counties_DP2020.csv")
+mydf <- read_csv("./data/ohio/oh_counties_DP2020.csv")
 glimpse(mydf)
 
 plot(mydf$poptotal, mydf$Hhtotal)
