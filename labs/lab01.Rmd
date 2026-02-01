@@ -29,7 +29,9 @@ This lab must be placed into a public repository on GitHub (www.github.com). Bef
 ## Exploratory data analysis
 
 This lab uses two files from the /data/CBW directory of this course's main repository:
+
 1. County_Boundaries.shp: A polygon file containing the boundaries for all counties in the Chesapeake Bay Watershed
+
 2. Non-Tidal_Water_Quality_Monitoring_Stations_in_the_Chesapeake_Bay.shp: point locations of non-tidal monitoring stations in the Chesapeake Bay Watershed
 
 
@@ -72,7 +74,7 @@ d.counties %>% dplyr::select(GEOID10, ALAND10) %>% head()
 # head truncates the data.frame to the first n rows
 
 ```
-Note that because we're using a spatial data frame in the `sf` package, the geometry is preserved, even though we didn't specify it. We can also get rid of attributes we DON'T WANT (but not the geometry attribute) using a `-` flag. For example, the following code "drops" the `NAME10` attribute:
+Note that because we're using a spatial data frame in the `sf` package, the geometry is preserved, even though we didn't specify it. We can also get omit of attributes we DON'T want (but not the geometry attribute) using a `-` flag. For example, the following code "drops" the `NAME10` attribute:
 
 ```{r noname, message=TRUE, echo=TRUE}
 d.counties %>% dplyr::select(-NAME10) %>% head()
@@ -80,7 +82,7 @@ d.counties %>% dplyr::select(-NAME10) %>% head()
 ```
 
 
-We can also specify ranges that we want to keep (or not):
+We can also specify ranges of attributes that we want to keep (or not):
 
 ```{r keeprange, echo=TRUE, message=TRUE}
 d.counties %>% dplyr::select(GEOID10:CLASSFP10) %>% head() 
@@ -93,7 +95,7 @@ d.counties %>% dplyr::select(starts_with("C"))
 
 ### Grouping data
 
-We can also "group" our data according to categorical data in our data.frames. This is useful if you want to create a function that works across the entire group. For example, we'll create a new attribute the calculates the land area of all counties in each state.
+We can also "group" our data according to categorical data in our data frames. This is useful if you want to create a function that works across the entire group. For example, we'll create a new attribute the calculates the land area of all counties in each state.
 ```{r grpuex, echo=TRUE, message=TRUE}
 d.counties %>% group_by(STATEFP10) %>% mutate(stateLandArea = sum(ALAND10))
 ```
@@ -131,7 +133,7 @@ d.counties %>%
 
 ### Spatial operations
 
-Since we have spatial data, we can peform some basic spatial operations with it. First, let's take a look at the coordinate reference system (CRS) for each file:
+Since we have spatial data, we can perform some basic spatial operations with it. First, let's take a look at the coordinate reference system (CRS) for each file:
 
 ```{r crs, echo=TRUE, message=TRUE}
 d.counties %>% sf::st_crs()
@@ -211,7 +213,7 @@ Test it with the following vectors
 
 `c(1, 0, -1), c(10, 1000, 100), c(.1, .001, 1e8), c("a", "b", "c")`
 
-### Task 4: (slightly) more complex spatial analysis. 
+### Task 4: A (slightly) more complex spatial analysis. 
 ...Note, you may need to find supplementary data to help you with these tasks
 
 4.1 Calculate the number of monitoring stations in each state
