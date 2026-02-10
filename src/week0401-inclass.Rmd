@@ -144,7 +144,7 @@ for(i in rainfall){
 
 - R loops are inefficient
 - Instead of appending the output of a loop to a dataset...
-- they make a complete new copy
+- they make a completely new copy
 - So use them in small cases, not large ones
 
 ---
@@ -155,7 +155,12 @@ for(i in rainfall){
 ```{r}
 rainfall %>% purrr::map(., f.storm.test)
 ```
-### How did your output differ?
+### How did your output differ? Why does it do it twice?
+
+### the difference between returning a value and printing it
+```{r}
+rainfall %>% purrr::walk(., f.storm.test)
+```
 
 ---
 
