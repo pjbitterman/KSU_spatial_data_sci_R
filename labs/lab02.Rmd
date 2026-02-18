@@ -2,10 +2,7 @@
 title: "Lab 02"
 #author: "Dr. Patrick Bitterman"
 #date: "`r format(Sys.time(), '%Y %B %d')`"
-output: 
-   pdf_document: 
-      template: my_template.tex
-      keep_tex: true
+output: pdf_document
 my_subtitle: "Env Analysis in R"
 fancy: true
 geometry: margin=1in
@@ -102,7 +99,7 @@ Look at the attribute "GeographyName" - it's a character attribute that contains
 bmps <- bmps %>% mutate(., FIPS.trimmed = stringr::str_sub(GeographyName, 1, 5))
 ```
 
-This preparing raw data for further analysis is called "munging". While the term isn't the important part, these kinds of preparatory steps can be useful when you're trying to create "keys" by which to join tables or just clean your tables in general.
+This preparing raw data for further analysis is commonly called "munging". While the term isn't the important part, these kinds of preparatory steps can be useful when you're trying to create "keys" by which to join tables or just clean your tables in general.
 
 Let's recall how to do some simple tasks
 
