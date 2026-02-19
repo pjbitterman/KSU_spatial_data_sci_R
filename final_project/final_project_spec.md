@@ -27,7 +27,7 @@ Other details:
 
 
 
-## Deliverable 2: in-class project update (25 points)
+## Deliverable 2: in-class project update (20 points)
 
 You will give a 3-5 minute presentation to the class that will cover:
 
@@ -39,7 +39,7 @@ You will give a 3-5 minute presentation to the class that will cover:
 
 The class is expected to listen attentively and ask questions of the speaker. You should be prepared to answer questions from your peers and instructor.
 
-## Deliverable 3: in-class final presentation (75 points)
+## Deliverable 3: in-class final presentation (80 points)
 
 You will also give a final presentation during the final week of class detailing the full extent of your project work and accomplishments. Undergraduate students will give a 7-10 minute presentation, while graduate students will give a 10-13 minute presentation. *Graduate students are expected to draw upon the work of others (e.g., scientific literature, reports, technical documents) to situate their work in a broader context.*
 
@@ -52,7 +52,7 @@ In this presentation, you will at a minimum discuss:
 5. The implications of your work (e.g., for your research, job)
 6. Future goals and objectives
 
-## Deliverable 4: final report (250 points)
+## Deliverable 4: final report (200 points)
 
 Your final report will follow the format of a short technical report where you should provide:
 
