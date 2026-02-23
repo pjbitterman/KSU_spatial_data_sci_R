@@ -1,31 +1,34 @@
 ---
 title: "Week 7 in-class"
-output: html_notebook
+output: none
 ---
 
 
 
 ```{r}
 library(tidyverse)
-
 library(sf)
 library(tmap)
 ```
 
 
-
+Note - your path might be different
 ```{r}
 counties <- sf::read_sf("../data/CBW/County_Boundaries.shp") %>% sf::st_make_valid()
 
 dams <- sf::read_sf("../data/CBW/Dam_or_Other_Blockage_Removed_2012_2017.shp") %>% sf::st_make_valid()
 
 streams <- sf::read_sf("../data/CBW/Streams_Opened_by_Dam_Removal_2012_2017.shp") %>% sf::st_make_valid()
+
+tmap::tmap_mode("view")
+tm_shape(counties) + tm_polygons(fill = "STATEFP10")
+
 ```
 
 
-
+Let's just work with Pennsylvania
 ```{r}
-pa.counties <- counties %>% filter(STATEFP10 == 42)
+pa.counties <- counties %>% filter(STATEFP10 == "42")
 ```
 
 
@@ -35,6 +38,8 @@ pa.dams <- st_intersection(dams, pa.counties)
 # or
 
 pa.dams <- dams[pa.counties,]
+
+# (I prefer the first option)
 ```
 
 ```{r}
@@ -46,13 +51,13 @@ st_intersects(dams, pa.counties)
 dams %>% st_intersects(x = ., y = pa.counties)
 dams %>% st_intersects(x = pa.counties, y = .)
 ```
-
+Matrix output with the ```sparse``` parameter
 
 ```{r}
 dams %>% st_intersects(x = ., y = pa.counties, sparse = F)
 ```
 
-
+Other predicates
 ```{r}
 # Disjoint
 dams %>% st_disjoint(., pa.counties, sparse = F)
@@ -61,7 +66,7 @@ dams %>% st_disjoint(., pa.counties, sparse = F)
 dams %>% st_within(., pa.counties, sparse = F)
 ```
 
-
+More examples
 ```{r}
 
 c.tioga <- counties %>% 
@@ -80,7 +85,7 @@ tm_shape(c.tioga) + tm_polygons(fill = "tan") + tm_shape(streams.tioga) + tm_lin
 streams.tioga %>% st_is_within_distance(., dams, 1)
 ```
 
-
+Spatial joins (see slides for discussion)
 
 ```{r}
 st_join(pa.counties, dams, join = st_intersects)
@@ -165,6 +170,8 @@ agg.rpcs <- nhds %>% dplyr::select(-SOURCEFC, -NHDPlus_Ca, -Tactical_B) %>%
 tm_shape(agg.rpcs) + tm_polygons(fill = "Baseline_L")
 
 ```
+
+## Remaining tasks
 
 
 ```{r}
