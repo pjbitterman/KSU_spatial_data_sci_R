@@ -162,7 +162,7 @@ clipped.images <- list(image.files$fn_char, bb.path) %>%
 
 
 
-## calculate ________ within_______ 
+## calculate ________ within _______ 
 
 ## What are the contents of this list and why am I bothering to create a list?
 toCalcArea <- list(
