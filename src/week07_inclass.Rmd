@@ -119,7 +119,7 @@ tm_shape(rpcs) + tm_polygons(fill = "INITIALS")
 ```
 
 ```{r}
-tm_shape(rpcs) + tm_borders(col = "red") +
+tm_shape(rpcs) + 
   tm_shape(nhds) + tm_polygons(fill = "Baseline_L", n = 7) +
   tm_shape(rpcs) + tm_borders(col = "red")
 ```
