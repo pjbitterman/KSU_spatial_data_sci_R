@@ -2,10 +2,7 @@
 title: "Lab 03"
 #author: "Dr. Patrick Bitterman"
 #date: "`r format(Sys.time(), '%Y %B %d')`"
-output: 
-   pdf_document: 
-      template: my_template.tex
-      keep_tex: true
+output: pdf_document
 my_subtitle: "Env Analysis in R"
 fancy: true
 geometry: margin=1in
@@ -29,72 +26,92 @@ This lab must be placed into a public repository on GitHub (www.github.com). Bef
 
 ## Data
 
-The data for this lab can be found on the US Census website. 
+The data for this lab can be found on the US Census website. The US Census provides various files and tables for download, but will instead use a package that provides a convenient way to access Census data and geometry. This will REQUIRE YOU TO REGISTER FOR AN API KEY and then use it in your code. You can read more about tidycensus and how to register and use your API key here: https://walker-data.com/tidycensus/articles/basic-usage.html
 
-1. First, go here: https://www.census.gov/geographies/mapping-files/2020/geo/tiger-data.html
-
-2. Second, scroll to the "Download Legal and Administrative Areas Geodatabases" section
-
-3. Click on "County" to download the county data for all of the US (the direct link is also here: https://www2.census.gov/geo/tiger/TIGER_DP/2020ACS/ACS_2020_5YR_COUNTY.gdb.zip). Note, the data are approximately 200 MB in size, so be aware of any connection or storage issues prior to downloading the file.
-
+NOTE, you can use your API key using the following command ```census_api_key("YOUR API KEY GOES HERE")```. BUT YOU SHOULD **NOT** INCLUDE THAT COMMAND IN YOUR R SCRIPT. I want to be VERY clear - if you put your API in the R script and then publish the code (e.g., to GitHub), someone else can use your API key. You do NOT want that. Instead, use the command in the console, and ```tidycensus``` will write the API key to your R Environmental variables file.
 
 ## Introduction
 
-In this lab, we will be calculating the spatial autocorrelation of various Census variables across a subset of the US. Please note, the dataset you downloaded above is larger than the current 100MB limit GitHub imposes on single files. This means you'll be unable to push that dataset to GitHub. Accordingly, I *strongly* suggest you subset the data such that your files are under this limit. This will be vital when I grade your submissions. If you're not certain how to save a subset of the file to disk, look at ```?sf::write_sf``` for help. We will also be using a new package called ```spdep``` in this assignment.
+In this lab, we will be calculating the spatial autocorrelation of various Census variables across a subset of the US. Will be using the ```tidycensus``` pacakge to download data, and we will also be using a new package called ```spdep``` in this assignment.
 
 
 We begin by loading the relevant packages and data
 
 ```{r packages, echo=TRUE, message = TRUE}
 library(spdep)
+library(tidycensus)
 library(sf)
 library(tidyverse)
 library(tmap)
 ```
 
 
-Next, we load our data, look at it, then maybe plot it (the plot might take some time). This file is a geodatabase, a proprietary file format created by ESRI. Conveniently, `sf_read` can actually read geodatabases. However, we also have to know the layer name ahead of time.
+The tidycenus packages uses an Application Programming Interface, or API, to download data directly from the US Census and then process into an R-friendly data structure.
 
-First, let's read the layer that has the geometry in this gdb file.
+First, let's use tidycensus to download data for all US states. Review the ```get_acs``` documentation to understand what parameters are available to you and what they do.
 
 ```{r data, echo=TRUE, message = TRUE}
-d.all <- sf::read_sf("../data/ACS_2020_5YR_COUNTY.gdb", layer = "ACS_2020_5YR_COUNTY")
+
+options(tigris_use_cache = TRUE) # cache geometry so you don't dl unnecessarily
+
+d.all <- get_acs(geography = "county", 
+                      table = "B15003",
+                      output = "wide", 
+                      geometry = T, 
+                      year = 2020)
+
 glimpse(d.all)
 
-
-
-
 #tmap::tm_shape(d.all) + tm_polygons() # commented out because 
-#it's a large dataset that takes a long time to plot
+#it's a large dataset that takes a long time to plot, but you should try it
 
 ```
 
-Next, we're going to read the geodatabase again, but this time a tablular dataset containing age and sex data. Because the GEOID in this table and in the geometry file are different, we need to create a geoid in this table that will match. We *could* do it as a separate step, but we're also able to modify the table as we read it.
-```{r read_tab, echo = T, message = t}
+The above code, we downloaded the `B15003` table. Where you see the a variable noted with an `E`, that's the estimate. An `M` indicates the Margin of Error for that estimate. 
 
+But a tricky thing about using ```tidycensus``` is that you need to know which table and variables you want to download ahead of time, and there are a LOT of data in the Census database. Conveniently, there is a way to download the variables so that we can download just what we want.
 
-d.x1 <- sf::read_sf("../data/ACS_2020_5YR_COUNTY.gdb", layer = "X01_AGE_AND_SEX") %>%
-  mutate(fixed_geoid = str_sub(GEOID, start = 8, end = -1)) 
-# the -1 is a shortcut to tell R to go to the end of the string
+```{r get_census_variables, echo = T, message = T}
+df.vars <- load_variables(2020, "acs5", cache = T)
 
-```
-
-Finally, we're going to join the tabular and spatial data together. 
-
-```{r join_data, echo = T, message = t}
-
-d.joined <- d.all %>% left_join(., d.x1, by = c("GEOID" = "fixed_geoid"))
-
+glimpse(df.vars)
 
 ```
 
+You can review, search, and filter those data to find any number of variables. But for the purpose of this lab, let's find the variable the corresponds to the estimate for the female population that is 75-79 years old. There are many ways we can do this, so let's explore
 
-Again, the data are too large, so we need to creat a subset we can work with later. Let's use the state ID to create a dataset with only those counties in Ohio. Be sure to check the data type of state ID
+```{r searching_vars, echo = T, message = T}
+
+df.vars %>% dplyr::filter(concept == "SEX BY AGE") %>% 
+  # If you break the chain here, you'll see a group of vars
+  dplyr::filter(str_detect(label, "Female")) %>% # narrow to Female estimates
+  dplyr::filter(str_detect(label, "75")) ## then to the variable we want
+
+```
+
+Now that we know the variable of interest, we can either download JUST that variable, or we can download the whole table. In the above example, the table is `B01001` and the variable number is `047`. It's usually easier to download the whole table in case you want other variables as well (and you often do), but either way works.
+
+
+```{r all_data, echo = T, message = T}
+d.sex.by.age <- get_acs(geography = "county", 
+                      table = "B01001",
+                      output = "wide", 
+                      geometry = T, 
+                      year = 2020)
+
+glimpse(d.sex.by.age)
+```
+
+
+That's a lot of data, so we need to create a subset we can work with later. Let's use the GEOID to identify the state and create a dataset with only those counties in Ohio. 
 
 ```{r make_subset, echo=TRUE, message = TRUE}
 
 # get just Ohio
-ohio <- d.joined %>% dplyr::filter(STATEFP == "39")
+ohio <- d.sex.by.age %>% 
+  mutate(., STATEID = stringr::str_sub(GEOID, 1, 2)) %>% 
+  # Take a second and think through what the above line is doing
+  dplyr::filter(STATEID == "39")
 
 
 # map it to verify
@@ -131,12 +148,12 @@ For each polygon in our polygon object, ```nb``` lists all neighboring polygons.
 nb[[1]]
 ```
 
-Polygon 1 has seven neighbors. The numbers represent the polygon IDs as stored in the spatial object ```ohio.projected```. Polygon 1 is associated with the County attribute name `"Hancock County"` and its  neighboring polygons are associated with the counties:
+Polygon 1 has three neighbors. The numbers represent the polygon IDs as stored in the spatial object ```ohio.projected```. Polygon 1 is associated with the `NAME` attribute name `"Erie County"` and its  neighboring polygons are associated with the counties:
 
 ```{r check names, echo = TRUE, message = TRUE}
-ohio.projected$NAMELSAD[1] # county in index 1
+ohio.projected$NAME[1] # county in index 1
 
-nb[[1]] %>% ohio.projected$NAMELSAD[.] # and it's neighbors. 
+nb[[1]] %>% ohio.projected$NAME[.] # and it's neighbors. 
 # Note we're doing this programmatically step-by-step
 ```
 
@@ -144,7 +161,7 @@ Next, we need to assign weights to each neighboring polygon. In our case, each n
 
 
 ```{r make weights, echo = TRUE, message = TRUE}
-lw <- nb2listw(nb, style="W", zero.policy=TRUE)
+lw <- spdep::nb2listw(nb, style="W", zero.policy=TRUE)
 ```
 
 The ```zero.policy=TRUE``` option allows for lists of non-neighbors. This should be used with caution since the user may not be aware of missing neighbors in their dataset. However, a zero.policy of `FALSE` would return an error if you have a dataset where a polygon does not have a neighbor.
@@ -173,7 +190,7 @@ Finally, we’ll compute the average neighbor population of Females 75-79 years 
 
 
 ```{r laggedVar, echo = TRUE, message = TRUE}
-F75.lag <- lag.listw(lw, ohio.projected$B01001e47)
+F75.lag <- lag.listw(lw, ohio.projected$B01001_047E)
 F75.lag
 ```
 
@@ -183,7 +200,7 @@ F75.lag
 To get the Moran’s I value, simply use the moran.test function.
 
 ```{r morantest, echo = TRUE, message = TRUE}
-moran.test(ohio.projected$B01001e47, lw)
+moran.test(ohio.projected$B01001_047E, lw)
 ```
 
 Note that the p-value computed from the `moran.test` function is not computed from an MC simulation but **analytically** instead. This may not always prove to be the most accurate measure of significance. To test for significance using the MC simulation method instead, use the moran.mc function.
@@ -197,14 +214,14 @@ The process to make a plot is relatively simple:
 
 ```{r moranplot, echo = TRUE, message = TRUE}
 # use zero.policy = T because some polygons don't have neighbors
-moran.plot(ohio.projected$B01001e47, lw, zero.policy=TRUE, plot=TRUE)
+moran.plot(ohio.projected$B01001_047E, lw, zero.policy=TRUE, plot=TRUE)
 ```
 
 
 
 ## Your tasks
 
-1. Create a spatial subset of the US, with at AT MINIMUM 4 states, MAXIMUM 7 states. States must be contiguous. Save this subset as a shapefile such that it's sufficiently small in size that GitHub will accept the git-push
+1. Create a spatial subset of the US, with at AT MINIMUM 4 states, MAXIMUM 7 states. States must be contiguous. 
 
 2. Choose a variable. If it's a raw count, you should normalize the variable in an appropriate manner (e.g., by total population, percent, by area)
 

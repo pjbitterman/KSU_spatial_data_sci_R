@@ -40,3 +40,12 @@ oh.c.j <- oh %>% left_join(., oh.pop.c, by = "GEOID") %>%
   mutate(propBachelors = B15003_021M / B01003_001E)
 
 oh.c.j %>% tm_shape(oh) + tm_polygons(fill = "propBachelors")
+
+options(tigris_use_cache = TRUE)
+
+all.states <- get_acs(geography = "county", table = "B15003",
+                   output = "wide", 
+                      geometry = T, year = 2020)
+
+
+all.states %>% tm_shape(.) + tm_polygons(fill = "B15003_003E")
