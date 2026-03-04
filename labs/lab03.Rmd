@@ -186,7 +186,7 @@ hist(neighbors)
 ```
 
 
-Finally, we’ll compute the average neighbor population of Females 75-79 years of age for each polygon. These values are often referred to as spatially lagged values. The following table shows the average neighboring F 75-79 values (stored in the F75.lag object) for each county. Note, I deterimined the correct attribute (B01001e47) by reading the metadata from the original Census Bureau link
+Finally, we’ll compute the average neighbor population of Females 75-79 years of age for each polygon. These values are often referred to as spatially lagged values. The following table shows the average neighboring F 75-79 values (stored in the F75.lag object) for each county. Note, I determined the correct attribute (variable 47 from table B01001) by reading the metadata from the following link: https://www.census.gov/programs-surveys/acs/technical-documentation/table-shells.2020.html#list-tab-79594641 .
 
 
 ```{r laggedVar, echo = TRUE, message = TRUE}
