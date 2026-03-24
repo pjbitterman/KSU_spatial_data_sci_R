@@ -1,0 +1,596 @@
+---
+title: "In-class static mapping"
+author: "Patrick Bitterman"
+date: "2025-04-06"
+output: html_document
+---
+
+# Making static maps in R
+
+Reference reading for today: Lovelace, Ch 9 (https://r.geocompx.org/adv-map.html)
+
+The chapter covers:
+
+- Fills/shades
+- Borders
+- Multiple layers
+- Color settings
+- Layouts
+- Facets (multi-panel maps)
+- Insets
+
+We will walk through all of these today, using example data from the `spData` package and then Ohio data from our course repository.
+
+---
+
+Load relevant packages. `spData` contains ready-to-use datasets for spatial analysis practice, including New Zealand country and regional data we'll use for demonstrations. `spDataLarge` contains larger datasets including a DEM.
+
+```{r}
+library(sf)
+library(terra)
+library(tmap)
+library(spData)      # demo datasets (nz, nz_height, etc.)
+library(tidyverse)
+```
+
+`spDataLarge` is not on CRAN — it's installed from a separate repository. You only need to do this once.
+
+```{r}
+# install only once — leave commented after initial install
+# install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")
+
+library(spDataLarge)
+```
+
+Load the New Zealand elevation raster — we'll use it shortly.
+
+```{r}
+nz_elev = rast(system.file("raster/nz_elev.tif", package = "spDataLarge"))
+```
+
+---
+
+# tmap: a grammar of graphics for maps
+
+`tmap` follows the same **grammar of graphics** philosophy as `ggplot2`. Every map is built from:
+
+1. `tm_shape(data)` — declares which dataset to draw
+2. `tm_fill()`, `tm_borders()`, `tm_polygons()`, `tm_lines()`, etc. — declares how to draw it
+3. Additional layout functions — `tm_scalebar()`, `tm_compass()`, `tm_legend()`, etc.
+
+These pieces are combined with `+`, just like `ggplot2`.
+
+Let's start with the simplest possible maps using the `nz` dataset (New Zealand regions, from `spData`).
+
+A filled polygon map:
+
+```{r}
+tm_shape(nz) +
+  tm_fill()
+```
+
+Just the outlines:
+
+```{r}
+tm_shape(nz) +
+  tm_borders()
+```
+
+Both together — `tm_polygons()` is shorthand for `tm_fill() + tm_borders()`:
+
+```{r}
+tm_shape(nz) +
+  tm_fill() +
+  tm_borders()
+```
+
+## Order matters!
+
+In R graphics, later layers are drawn **on top of** earlier ones. This is easy to get wrong:
+
+```{r}
+# borders THEN fill — the fill is drawn on top of the borders, so borders disappear
+tm_shape(nz) +
+  tm_borders() +
+  tm_fill()
+```
+
+*The fill draws over the borders when fill comes second. For most cases you want fill first, then borders. `tm_polygons()` handles this automatically.*
+
+---
+
+## Storing maps as variables
+
+You can assign a `tmap` object to a variable. Doing so does **not** display it — it just stores the map for later use.
+
+```{r}
+map_nz_base = tm_shape(nz) + tm_polygons()
+
+map_nz_blue_dots = map_nz_base +
+  tm_shape(nz_height) + tm_dots(size = 0.25, fill = "blue")
+```
+
+*Nothing is displayed because we only assigned — we haven't called either variable yet.*
+
+To display a stored map, simply call it:
+
+```{r}
+map_nz_blue_dots
+```
+
+This is useful because you can reuse a base map and build multiple variants without re-typing the foundation code.
+
+---
+
+## Dots vs. bubbles
+
+`tm_dots()` draws all points at the same fixed size. `tm_bubbles()` scales the point size by a variable.
+
+```{r}
+map_nz_red_bubbles = map_nz_base +
+  tm_shape(nz_height) + tm_bubbles(size = "elevation",
+                                   fill = "darkred",
+                                   lwd = 0,
+                                   fill_alpha = .4)
+map_nz_red_bubbles
+```
+
+A few things to note:
+
+- **`size = "elevation"`** — when a parameter refers to a variable in the data, it goes inside quotes. This tells tmap to scale bubble size by the `elevation` column.
+- **`fill` vs. `col`** — in tmap v4, `fill` controls the interior color of polygons/bubbles; `col` controls the border/outline color. They are separate aesthetics.
+- **`lwd = 0`** — sets border line width to zero (no outline on the bubbles)
+- **`fill_alpha`** — controls fill transparency (0 = invisible, 1 = opaque)
+
+## The grammar in practice
+
+The composable structure gives us a clean pattern for complex maps:
+
+```
+map <- tm_shape(base_data) + tm_polygons() +   # base layer
+       tm_shape(layer_2)   + tm_lines() +       # second dataset
+       tm_shape(layer_3)   + tm_symbols() +     # third dataset
+       tm_scalebar() + tm_compass()             # layout
+```
+
+And maps stored as variables can be combined:
+
+```
+map_full <- map_part_a + map_part_b + map_part_c
+```
+
+We'll use this pattern throughout the day.
+
+---
+
+# Choropleth mapping
+
+Mapping a polygon with a variable means tmap must classify the values into color bins. Let's see what happens with the default:
+
+```{r}
+tm_shape(nz) + tm_polygons(fill = "Median_income")
+```
+
+How did tmap decide where to put the class boundaries?
+
+*The default style is `"pretty"`, which generates "round" breaks that look clean to a human reader (e.g., 20000, 30000, 40000). It is computed automatically from the data range. The number of classes defaults to 5.*
+
+**Don't assume the default is the right choice for your data.** `"pretty"` minimizes visual clutter but can hide patterns if the data distribution is skewed or bimodal.
+
+---
+
+## Setting your own breaks
+
+You can specify exact breaks — useful when you have substantively meaningful thresholds:
+
+```{r}
+tm_shape(nz) + tm_polygons(fill = "Median_income",
+                           fill.scale = tm_scale(breaks = c(0, 30000, 40000, 50000)))
+```
+
+Or specify a number of classes and let tmap place them:
+
+```{r}
+tm_shape(nz) + tm_polygons(fill = "Median_income",
+                           fill.scale = tm_scale(n = 10))
+```
+
+---
+
+## Classification methods
+
+For most choropleth mapping, `tm_scale_intervals()` is the right tool. It supports several standard methods — each answers a slightly different question:
+
+```{r}
+# Equal interval: divides the data RANGE into equal-width bins
+# Good for: uniformly distributed data; when the range itself is meaningful
+tm_shape(nz) + tm_polygons(fill = "Median_income",
+                           fill.scale = tm_scale_intervals(style = "equal", values = "BuGn"))
+```
+
+```{r}
+# Jenks (natural breaks): minimizes within-class variance
+# Good for: data with natural clusters or groupings; often the most "honest" method
+tm_shape(nz) + tm_polygons(fill = "Median_income",
+                           fill.scale = tm_scale_intervals(style = "jenks", values = "viridis"))
+```
+
+```{r}
+# Quantile: puts an equal NUMBER of observations in each class
+# Good for: comparing ranks; always produces full-color maps even with skewed data
+# Watch out: equal counts can put very different values in the same class
+tm_shape(nz) + tm_polygons(fill = "Median_income",
+                           fill.scale = tm_scale_intervals(style = "quantile", values = "brewer.purples", n = 5))
+```
+
+*There is no universally "correct" method. Your choice should reflect what comparison you want readers to make and how the data are distributed. Always inspect the distribution before choosing.*
+
+---
+
+# Legend customization
+
+Changing the title — note the use of `expression()` for superscripts:
+
+```{r}
+legend_title = expression("Area (km"^2*")")
+tm_shape(nz) +
+  tm_polygons(fill = "Land_area", fill.legend = tm_legend(title = legend_title))
+```
+
+Changing the title, orientation, and position. `tm_pos_out()` places the legend outside the map frame:
+
+```{r}
+tm_shape(nz) +
+  tm_polygons(fill = "Land_area",
+              fill.legend = tm_legend(title = legend_title,
+                                      orientation = "landscape",
+                                      position = tm_pos_out("center", "bottom")))
+```
+
+Keep portrait mode but move to the bottom:
+
+```{r}
+tm_shape(nz) +
+  tm_polygons(fill = "Land_area",
+              fill.legend = tm_legend(title = legend_title,
+                                      position = tm_pos_out("center", "bottom")))
+```
+
+---
+
+# tmap modes: static vs. interactive
+
+`tmap_mode("view")` switches to an interactive Leaflet-based view. `ttm()` toggles back to static mode.
+
+```{r}
+tmap_mode(mode = "view")
+
+tm_shape(nz) +
+  tm_polygons(fill = "Land_area",
+              fill.legend = tm_legend(title = legend_title,
+                                      position = tm_pos_out("center", "bottom")))
+
+ttm()  # switch back to static mode
+```
+
+*Clicking a feature in view mode shows the attribute values for that feature — a quick way to inspect your data spatially.*
+
+---
+
+# Building a map in pieces
+
+Let's put the composability to work. We'll build a multi-layer New Zealand map by defining each component separately.
+
+First, base polygons and elevation raster:
+
+```{r}
+map1 <- tm_shape(nz) + tm_polygons() +
+  tm_shape(nz_elev) + tm_raster(col_alpha = 0.7)
+
+map1
+```
+
+Water boundaries (derived — we're buffering the coastline into a line):
+
+```{r}
+nz_water = st_union(nz) %>%
+  st_buffer(22200) %>%       # 22200 meters — we know units from st_crs(nz)$units
+  st_cast(to = "LINESTRING")
+
+map2 <- tm_shape(nz_water) + tm_lines()
+map2
+```
+
+*To confirm buffer units: `sf::st_crs(nz)$units` returns `"m"` for this dataset, so 22200 = 22.2 km. Always check the CRS units before using distance-based operations.*
+
+Highest elevation points:
+
+```{r}
+map3 <- tm_shape(nz_height) + tm_symbols()
+map3
+```
+
+Combine all layers into one map:
+
+```{r}
+map.all <- map1 + map2 + map3
+map.all
+```
+
+---
+
+# Multi-panel maps with `tmap_arrange()`
+
+`tmap_arrange()` places multiple independent maps side by side in a grid:
+
+```{r}
+map.arr <- tmap_arrange(map1, map2, map3)
+map.arr
+```
+
+*A few things to note about `tmap_arrange()`:*
+
+- *Each panel is an independent map with its own extent, scale, and legend — they are not linked*
+- *Scales are not shared across panels by default, so a feature in panel 1 and panel 3 may look the same color but represent different values*
+- *It is great for comparing different variables or methods for the same area, or for showing workflow steps side-by-side*
+- *It is **not** the right tool for an inset, where the context map needs to be visually inside the detail map*
+
+---
+
+## TONS more symbol options
+
+Let's see what each parameter does. Predict the result before running:
+
+```{r}
+ma1 = tm_shape(nz) + tm_polygons(fill = "red")
+ma2 = tm_shape(nz) + tm_polygons(fill = "red", fill_alpha = 0.3)
+ma3 = tm_shape(nz) + tm_polygons(col = "blue")
+ma4 = tm_shape(nz) + tm_polygons(lwd = 3)
+ma5 = tm_shape(nz) + tm_polygons(lty = 2)
+ma6 = tm_shape(nz) + tm_polygons(fill = "red", fill_alpha = 0.3,
+                                 col = "blue", lwd = 3, lty = 2)
+tmap_arrange(ma1, ma2, ma3, ma4, ma5, ma6)
+```
+
+*Results: (1) solid red fill, (2) transparent red fill, (3) blue borders only (no fill change), (4) thick borders, (5) dashed borders, (6) all combined. `col` controls the border, `fill` the interior — they are independent aesthetics.*
+
+---
+
+# A bridge to the Ohio data
+
+Everything above used New Zealand example data. Let's switch to our actual course data before the activity — just to make sure the data loads and looks right.
+
+```{r}
+allohio <- sf::read_sf("../data/static_mapping/oh_counties.gpkg")
+sa      <- allohio %>% dplyr::filter(NAME %in% c("Portage", "Summit"))
+```
+
+A simple map of all Ohio counties. Note there's no demographic variable yet — we'll add that in the activity.
+
+```{r}
+tm_shape(allohio) + tm_polygons() +
+  tm_shape(sa) + tm_polygons(fill = "steelblue") +
+  tm_scalebar(position = c("left", "bottom"))
+```
+
+Load and prep the DEM for the study area. We project it first (so units are consistent with our vector data), then crop to reduce the memory footprint:
+
+```{r}
+myras <- rast("../data/static_mapping/neoh_dem.tif") %>%
+  terra::project(., sf::st_crs(sa)$wkt) %>%
+  terra::crop(., sa)
+```
+
+Layer the DEM behind the county outlines:
+
+```{r}
+tm_shape(myras) +
+  tm_raster(col.scale = tm_scale_continuous(values = "YlGn"),
+            col.legend = tm_legend(position = c("left", "top"))) +
+  tm_shape(sa) + tm_polygons(fill_alpha = 0.2) +
+  tm_scalebar(position = c("left", "bottom"))
+```
+
+*This is the core of what Group 3 will build out. What's still missing? The join for census data, parks, water features, labels — and the inset. Let's cover inset maps before we start the activity.*
+
+---
+
+# Inset maps
+
+An **inset map** places a small context map *inside* the main map — typically showing the study area's location within a broader geographic context. It is one of the most common techniques in professional cartography and one of the trickier ones to implement programmatically.
+
+We'll build the components step by step.
+
+## The concept: viewports
+
+By default, `tmap` (like most R graphics) uses the **entire graphics device** (plot window, PDF page, PNG canvas, etc.) to draw one map.
+
+The `grid` package — part of base R, no install needed — lets us subdivide the device into named **viewports**. A viewport is simply a rectangular region defined by its position and size within the device. When we call `print(my_map, vp = some_viewport)`, tmap renders the map inside that region only.
+
+Think of it like placing two pieces of paper on a table: you can position a small piece (the inset) anywhere on top of the large piece (the main map).
+
+```{r}
+library(grid)  # base R package — no install needed
+```
+
+## The concept: normalized dimensions
+
+Here is where most students get confused. Let's work through it carefully.
+
+Maps live in **real-world coordinate systems** — UTM meters, decimal degrees, etc. But viewport dimensions are specified in **normalized parent coordinates (npc)**: dimensionless fractions from 0 to 1, where 1 means "the full width or height of the device."
+
+If we just passed raw coordinate extents to `viewport()`, we'd get distortion. Ohio's bounding box might be 630,000 meters wide and 340,000 meters tall — but those numbers mean nothing to a graphics device that thinks in fractions.
+
+The `norm_dim()` function below solves this by computing each dimension as a **fraction of the longer dimension**:
+
+```{r}
+norm_dim <- function(obj) {
+  bbox   <- st_bbox(obj)
+  width  <- bbox[["xmax"]] - bbox[["xmin"]]
+  height <- bbox[["ymax"]] - bbox[["ymin"]]
+  w <- width  / max(width, height)   # ≤ 1.0: fraction of longer side
+  h <- height / max(width, height)   # ≤ 1.0: fraction of longer side
+  return(unit(c(w, h), "snpc"))      # "snpc" = square normalized parent coordinates
+}
+```
+
+Let's see what this returns for our two areas:
+
+```{r}
+main_dim <- norm_dim(sa)        # Portage + Summit: the MAIN (detail) map
+ins_dim  <- norm_dim(allohio)   # All Ohio: the INSET (context) map
+main_dim
+ins_dim
+```
+
+*The result: each map gets a width and height as fractions of its own longest dimension. The viewport respects that aspect ratio. Without this step, a wide state like Ohio would appear stretched into a square, or squeezed into a sliver.*
+
+## Step 1: Build the inset (context) map
+
+The inset shows where the study area sits within Ohio. We add the `oh_region` bounding box as a red border so the reader can locate the detail map:
+
+```{r}
+oh_region <- st_bbox(sa) %>% st_as_sfc()
+
+map_inset <- tm_shape(allohio) + tm_polygons() +
+  tm_shape(oh_region) + tm_borders(lwd = 3, col = "red") +
+  tm_layout(bg.color = "lightblue") +
+  tm_scalebar(position = c("left", "bottom"))
+
+map_inset
+```
+
+## Step 2: Define viewport positions
+
+`main_vp` defines the size of the rendering area for the main (detail) map — how much of the graphics device it occupies:
+
+```{r}
+main_vp <- viewport(width = main_dim[1], height = main_dim[2])
+```
+
+`ins_vp` defines both the **size** and **position** of the inset. Read each argument carefully:
+
+```{r}
+ins_vp <- viewport(
+  width  = ins_dim[1] * 0.4,              # Ohio's normalized width, scaled to 40% of main map
+  height = ins_dim[2] * 0.4,              # Ohio's normalized height, scaled proportionally
+  x      = unit(1, "npc") - unit(0.5, "cm"),  # position: right edge minus 0.5cm margin
+  y      = unit(0.01, "npc"),             # position: 1% up from the bottom
+  just   = c("right", "bottom")           # which corner of the inset does x,y refer to?
+)
+```
+
+*`x = unit(1, "npc") - unit(0.5, "cm")` reads as: "start at the right edge of the device (1.0 in normalized coordinates), then back off half a centimeter." You can mix unit types in arithmetic like this. `just = c("right", "bottom")` means the x,y coordinates point to the bottom-right corner of the inset.*
+
+## Step 3: Draw
+
+The drawing order matters. We must:
+
+1. Clear the device (`grid.newpage()`)
+2. Draw the main map into `main_vp`
+3. `pushViewport(main_vp)` — make the main viewport the **active coordinate system** so that subsequent positions are measured relative to the main map, not the whole device
+4. Draw the inset map into `ins_vp` (which is now positioned relative to the main map)
+
+```{r}
+grid.newpage()
+print(oh_height_map, vp = main_vp)   # draw main map
+pushViewport(main_vp)                 # shift coordinate origin to main map
+print(map_inset, vp = ins_vp)         # draw inset, positioned inside main map
+```
+
+*Wait — `oh_height_map` isn't defined yet here. In the activity, this will be your assembled detail map from Group 3's work. For now, substitute any of the maps you've built above to test the viewport machinery.*
+
+## A note on tuning
+
+Your first inset map will not look perfect — that is normal. The parameters to adjust are:
+
+| Parameter | Effect |
+|---|---|
+| `ins_dim[1] * 0.4` | Scale factor — larger value = bigger inset |
+| `unit(0.5, "cm")` | Right margin — increase to push inset further from edge |
+| `y = unit(0.01, "npc")` | Vertical position — increase to move inset up |
+| `just = c("right", "bottom")` | Which corner of the inset the x,y position refers to |
+
+Try `0.3` for a small inset, `0.5` for a larger one. Moving the inset to the bottom-left: change `x = unit(0, "npc") + unit(0.5, "cm")` and `just = c("left", "bottom")`.
+
+---
+
+# Activity: Building a frankenmap
+
+![](../slides/images/frankenmap.png)
+
+The goal: a multi-scale map combining a state-level context (all Ohio) with a detailed local view (Portage + Summit counties). We'll build it the same way we built the NZ map above — in pieces, then together.
+
+1. We'll break into three groups
+2. Each group works on a separate component
+3. Then we combine the code into one visualization
+
+## Data
+
+All in `./data/static_mapping/`:
+
+- `oh_counties.gpkg` — Ohio county boundaries
+- `oh_counties_DP2020.csv` — 2020 Census data (note the GEOID prefix!)
+- `neoh_dem.tif` — Northeast Ohio DEM
+- `oh_places.gpkg` — municipal boundaries
+- `oh_parks.gpkg` — parks with `FEATTYPE`
+- `oh_rivers.gpkg` — rivers statewide
+- `tl_2022_39133_linearwater/` — linear water, Portage County
+- `tl_2023_39153_linearwater/` — linear water, Summit County
+
+*You will need to derive additional products from these raw files (cropped rasters, joined data, filtered subsets). Plan before you code.*
+
+---
+
+## GROUP 1 — Ohio scale
+
+1. Ohio counties, symbolized (filled) by a Census variable. You will need a `left_join()` — inspect both GEOIDs before joining
+2. Borders with non-default symbols (adjust at least one of: `col`, `lwd`, `lty`)
+3. A scale bar
+
+Store your result as `map_ohio`.
+
+---
+
+## GROUP 2 — Local scale
+
+1. Municipal boundaries within Portage AND Summit counties, with labels for place names (`oh_places.gpkg`)
+2. Parks within Portage AND Summit counties, symbolized with different shades of green by `FEATTYPE`
+3. Linear water features from the two county shapefiles — use `dplyr::bind_rows()` to combine. Symbolize to indicate which streams intersect a park
+
+Store your result as `map_local`.
+
+---
+
+## GROUP 3 — Putting it together
+
+1. DEM as base layer behind semi-transparent Portage + Summit counties
+2. Parks and water features on top
+3. A north arrow (`tm_compass()`)
+4. A scale bar
+5. Code to make `map_ohio` an inset (use the viewport walkthrough above as your reference)
+6. A title
+
+Store your result as `map_local_elev` before adding the inset.
+
+### One note for everyone:
+
+**Everything must be done programmatically, referencing data using relative paths from the repo root.** You'll understand why after the activity.
+
+---
+
+## Before you start: what are your general steps?
+
+Take two minutes to think through your group's workflow before writing any code. What data transformations are needed? What spatial operations? What order should layers be drawn in?
+
+You have until ______________________
+
+---
+
+## Now that we have the components, what's next?
+
+1. Share code across groups
+2. One person integrates it into a single script
+3. We'll display and discuss the final result
+
+*What happens when you combine code from three people who made different variable name choices? This is why the "EVERYTHING PROGRAMMATICALLY" requirement matters — you'll find out.*

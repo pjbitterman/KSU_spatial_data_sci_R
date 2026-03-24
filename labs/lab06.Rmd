@@ -1,0 +1,82 @@
+---
+title: "Lab 05"
+#author: "Dr. Patrick Bitterman"
+#date: "`r format(Sys.time(), '%Y %B %d')`"
+output: 
+   pdf_document: 
+      template: my_template.tex
+      keep_tex: true
+my_subtitle: "Env Analysis in R"
+fancy: true
+geometry: margin=1in
+latex_engine: pdflatex
+colorlinks: true
+---
+
+# Lab 05: Dynamic mapping in Leaflet
+
+### Read the instructions COMPLETELY before starting the lab
+
+This lab builds on many of the discussions and exercises from class, including lab 4
+
+### Formatting your submission
+
+This lab must be placed into a public repository on GitHub (www.github.com). Before the due date, submit **on Canvas** a link to the repository. I will then download your repositories and run your code. The code must be contained in either a .R script or a .Rmd markdown document. As I need to run your code, any data you use in the lab must be referenced using **relative path names**. Finally, answers to questions I pose in this document must also be in the repository at the time you submit your link to Canvas. They can be in a separate text file, or if you decide to use an RMarkdown document, you can answer them directly in the doc.
+
+## Introduction
+
+This lab is much more free-form than previous assignments. You will be taking previous work from previous labs re-creating the maps using the Leaflet package. I encourage you to use whatever resources you find useful, including https://rstudio.github.io/leaflet/ and https://bookdown.org/nicohahn/making_maps_with_r5/docs/leaflet.html
+
+
+## Your tasks
+
+For this lab, you will re-create maps from labs 2-4 using Leaflet. Below, I have referenced a specific question or task from lab 2, lab 3, and lab 4. Further, I have added new, Leaflet-specific tasks to each item. You will need to look back to previous labs to find the relevant context for each task. Create the maps as specified, then answer the questions at the end.
+
+
+### Task 1. From lab 2, task 2.3:
+
+*Original task to be recreated using Leaflet:* Make a map of the counties, shading each county by the total cost of BMPs funded/implemented in that county. This will required you to join multiple datasets together
+
+*Leaflet/other extras to add:*
+
+- Mouse-over label the displays the total cost of BMPs funded in that county
+
+- Use an equal-interval classification method with 5 classes. Determine the breaks programmatically.
+
+- Do NOT use the default color scheme
+
+### Task 2. From lab 3, task Bonus #2:
+
+*Original task to be recreated using Leaflet:* plot a choropleth map of your dataset with a categorical color scheme, where the shading corresponds to the Moran plot (really, “LISA”) quadrants. Thus, your map will have four shades of color.
+
+*Leaflet/other extras to add:*
+
+- Add a pop-up window that displays the p-value (you'll have to look at the `moran.plot()` documentation) when you click on that county with a mouse
+
+- Add a control to change between 3 different basemaps
+
+
+### Task 3: From lab 4, task 2:
+
+*Original task to be recreated using Leaflet:* Make a second  map of your choosing. You may choose any spatial extent, domain, or technique. I'm looking for creativity, good coding practices (including comments), and for you to demonstrate independent thinking. There are minor restrictions you must follow:
+
+1. It must include vector AND raster data in some manner
+    
+2. It must include spatial data relating to a social process (e.g., political boundaries) AND spatial data relating to an environmental process (e.g., water resources)
+    
+3. The map should "stand on its own" and communicate its purpose without additional text
+    
+4. That's it!
+
+*Leaflet/other extras to add:*
+
+- Add a control that turns on/off each layer
+
+- Since everyone's maps are different, I can't specify exactly what else you should add. But, find one thing cool, interesting, or applicable to YOUR map, and implement it.
+
+
+## **Questions:**
+
+1. Reflect on the labs from this semester. What did you learn? What did you like? What did you not like?
+
+2. Describe the "one thing" you chose to add to your map in Task 3 above. What did you do, and why is it applicable to your map?

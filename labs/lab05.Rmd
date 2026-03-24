@@ -13,11 +13,11 @@ latex_engine: pdflatex
 colorlinks: true
 ---
 
-# Lab 05: Dynamic mapping in Leaflet
+# Lab 05: Making static maps
 
 ### Read the instructions COMPLETELY before starting the lab
 
-This lab builds on many of the discussions and exercises from class, including lab 4
+This lab builds on many of the discussions and exercises from class, including the "frankenmap" exercise from class.
 
 ### Formatting your submission
 
@@ -25,58 +25,49 @@ This lab must be placed into a public repository on GitHub (www.github.com). Bef
 
 ## Introduction
 
-This lab is much more free-form than previous assignments. You will be taking previous work from previous labs re-creating the maps using the Leaflet package. I encourage you to use whatever resources you find useful, including https://rstudio.github.io/leaflet/ and https://bookdown.org/nicohahn/making_maps_with_r5/docs/leaflet.html
+This lab is much more free-form than previous assignments. You will be completing your own version of the in-class "frankenmap" using proper cartographic principles. I encourage you to use whatever resources you find useful, including the relevant sections of the Lovelace chapter and online resources such as: https://mgimond.github.io/Spatial/good-map-making-tips.html
+
 
 
 ## Your tasks
 
-For this lab, you will re-create maps from labs 2-4 using Leaflet. Below, I have referenced a specific question or task from lab 2, lab 3, and lab 4. Further, I have added new, Leaflet-specific tasks to each item. You will need to look back to previous labs to find the relevant context for each task. Create the maps as specified, then answer the questions at the end.
+1. Using the same descriptions as the in-class frankenmap, create a map that follows "good" cartographic principles. I have included the instructions below for reference. The data can be found in: ```./data/static_mapping/```
+
+  Original description:
+
+### Ohio scale
+1. Ohio counties, symbolized (filled) by some variable of interest. You will need to use a tabular join (`left_join()`, most likely) between spatial and tabular data
+2. Borders symbolized using NON-DEFAULT symbols
+3. A scale bar
+
+### Local scale
+1. Municipal boundaries within Portage AND Summit counties, with labels for names (see `oh_places.gpkg`)
+2. Parks within Portage AND Summit counties, symbolized using different shades of green according to the park TYPE
+3. Linear water features (streams, rivers) in Portage AND Summit counties. Symbols should indicate which linear features intersect a park
+
+## Putting it together
+1. Use the provided DEM to plot elevation behind a semi-transparent Portage and Summit counties
+2. A north arrow
+3. Code to make the Ohio-scale map an inset into the map detailing the Portage + Summit counties study area
+4. A title
+
+### One NOTE:
+
+*EVERYTHING NEEDS DONE PROGRAMMATICALLY REFERENCING DATA LOCATIONS IN THE REPO*
 
 
-### Task 1. From lab 2, task 2.3:
+2. Make a second static map of your choosing. You may choose any spatial extent, domain, or technique. I'm looking for creativity, good coding practices (including comments), and for you to demonstrate independent thinking. There are minor restrictions you must follow:
+    1. It must include vector AND raster data in some manner
+    2. It must include spatial data relating to a social process (e.g., political boundaries) AND spatial data relating to an environmental process (e.g., water resources)
+    3. The map should "stand on its own" and communicate its purpose without additional text
+    4. That's it!
 
-*Original task to be recreated using Leaflet:* Make a map of the counties, shading each county by the total cost of BMPs funded/implemented in that county. This will required you to join multiple datasets together
+## Questions:
 
-*Leaflet/other extras to add:*
+1. Describe and justify your choices in making map 1. 
 
-- Mouse-over label the displays the total cost of BMPs funded in that county
+2. Compare the cartographic decisions you made in your *individual* process to the decisions made *by the groups in-class*. Make direct reference to how your group made decisions in-class, and how those decisions impacted the final "frankenmap".
 
-- Use an equal-interval classification method with 5 classes. Determine the breaks programmatically.
+3. Describe your choices in making map 2 (the one of your choosing). Include why you chose the problem and where you obtained your data. Finally, your map is a communication piece. What was the intent of your communication and do you feel as though you achieved your goal?
 
-- Do NOT use the default color scheme
-
-### Task 2. From lab 3, task Bonus #2:
-
-*Original task to be recreated using Leaflet:* plot a choropleth map of your dataset with a categorical color scheme, where the shading corresponds to the Moran plot (really, “LISA”) quadrants. Thus, your map will have four shades of color.
-
-*Leaflet/other extras to add:*
-
-- Add a pop-up window that displays the p-value (you'll have to look at the `moran.plot()` documentation) when you click on that county with a mouse
-
-- Add a control to change between 3 different basemaps
-
-
-### Task 3: From lab 4, task 2:
-
-*Original task to be recreated using Leaflet:* Make a second  map of your choosing. You may choose any spatial extent, domain, or technique. I'm looking for creativity, good coding practices (including comments), and for you to demonstrate independent thinking. There are minor restrictions you must follow:
-
-1. It must include vector AND raster data in some manner
-    
-2. It must include spatial data relating to a social process (e.g., political boundaries) AND spatial data relating to an environmental process (e.g., water resources)
-    
-3. The map should "stand on its own" and communicate its purpose without additional text
-    
-4. That's it!
-
-*Leaflet/other extras to add:*
-
-- Add a control that turns on/off each layer
-
-- Since everyone's maps are different, I can't specify exactly what else you should add. But, find one thing cool, interesting, or applicable to YOUR map, and implement it.
-
-
-## **Questions:**
-
-1. Reflect on the labs from this semester. What did you learn? What did you like? What did you not like?
-
-2. Describe the "one thing" you chose to add to your map in Task 3 above. What did you do, and why is it applicable to your map?
+4. With respect to `tmap` and the process of creating static maps, what did you learn?

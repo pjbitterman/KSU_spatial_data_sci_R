@@ -1,0 +1,346 @@
+---
+title: "Lab 05 (alternate)"
+#author: "Dr. Patrick Bitterman"
+#date: "`r format(Sys.time(), '%Y %B %d')`"
+output: pdf_document
+my_subtitle: "Env Analysis in R"
+fancy: true
+geometry: margin=1in
+latex_engine: pdflatex
+colorlinks: true
+---
+
+# Lab 05: Making static maps
+
+### Read the instructions COMPLETELY before starting the lab
+
+This lab builds directly on the in-class frankenmap exercise and your readings from Lovelace, Ch. 9 (https://r.geocompx.org/adv-map.html). You should have the in-class notebook available for reference.
+
+### Formatting your submission
+
+This lab must be placed into a public repository on GitHub (www.github.com). Before the due date, submit **on Canvas** a link to the repository. I will then download your repositories and run your code. The code must be contained in either a .R script or a .Rmd markdown document. As I need to run your code, any data you use in the lab must be referenced using **relative path names**. Finally, answers to questions I pose in this document must also be in the repository at the time you submit your link to Canvas. They can be in a separate text file, or if you decide to use an RMarkdown document, you can answer them directly in the doc.
+
+## Introduction
+
+In class we built the "frankenmap" as a group exercise — three teams working on pieces that were assembled into a single visualization. This lab asks you to build that same map on your own, but in a more deliberate way: **piece by piece, verifying each component before moving to the next**.
+
+The key insight from the in-class exercise is that `tmap` is designed around composable pieces. Every map is just a base shape plus layers plus aesthetics:
+
+```
+map <- tm_shape(data) + tm_polygons() +   # base
+       tm_shape(data2) + tm_lines() +     # next layer
+       tm_compass() + tm_scalebar()       # layout elements
+```
+
+And maps stored as variables can be added together:
+
+```
+map_full <- map_part_1 + map_part_2 + map_part_3
+```
+
+This lab walks through each component of the frankenmap systematically. By the end of Task 4, you will have a complete inset map that integrates all of them. Task 5 asks you to produce a second, entirely original map.
+
+All data are in `../data/static_mapping/` relative to this file's location.
+
+```{r packages, echo=TRUE, message=TRUE}
+library(sf)
+library(terra)
+library(tmap)
+library(tidyverse)
+library(grid)  # needed for inset maps in Task 4 — part of base R, no install required
+```
+
+---
+
+## Task 1: The state scale — Ohio choropleth
+
+*Reference: Lovelace Ch 9.2.3–9.2.4 (color settings, choropleth mapping)*
+
+In the frankenmap, Group 1 was responsible for a state-scale choropleth of Ohio counties. You will build that component here.
+
+### 1.1 — Load and join
+
+Load the Ohio county geometry from `oh_counties.gpkg`. Also load the 2020 Census demographic data from `oh_counties_DP2020.csv`.
+
+```{r load_counties, echo=TRUE, message=TRUE}
+# your code here
+```
+
+Before joining, inspect the GEOID column in **both** objects. You should notice something about the format of the GEOID in the CSV that requires attention before a join will work. Resolve this discrepancy, then perform a `left_join()`.
+
+*Hint: Try `head()` on both GEOIDs and compare carefully.*
+
+```{r join_data, echo=TRUE, message=TRUE}
+# your code here
+```
+
+Verify the join worked: how many rows does your joined object have? Does it match what you'd expect?
+
+### 1.2 — Choose and justify a variable
+
+Choose **one** demographic variable from the Census data. If it is a raw count, normalize it appropriately (e.g., as a proportion of total population). Add a brief comment in your code explaining what the variable represents and why you find it interesting.
+
+```{r choose_variable, echo=TRUE, message=TRUE}
+# your code here
+```
+
+### 1.3 — Build the Ohio-scale map
+
+Using your joined data, build a choropleth map of all Ohio counties. Requirements:
+
+- Color the counties by your chosen variable using an **explicit** classification scheme — do not leave it at the default. Choose from `"equal"`, `"jenks"`, `"quantile"`, or `"pretty"` and set your number of classes.
+- Style the borders with non-default line properties (adjust at least one of: color, width, or line type)
+- Add a scale bar
+- Give your legend a meaningful, human-readable title (not just the raw variable name)
+- Store the finished map in a variable called `map_ohio`
+
+```{r map_ohio, echo=TRUE, message=TRUE}
+# your code here
+
+# verify it looks right:
+map_ohio
+```
+
+**Reflection question 1 (answer in your repo):** Justify your choice of classification method. How would the map's message change if you used a different method? Reference specific class boundaries in your answer.
+
+---
+
+## Task 2: The local scale — Portage and Summit counties
+
+*Reference: Lovelace Ch 9.2.2–9.2.3 (map objects, aesthetics)*
+
+Group 2 was responsible for the detail view: municipal boundaries, parks, and water features for the Portage and Summit county study area. You will build this component here, layer by layer.
+
+### 2.1 — Prepare the study area
+
+Filter the county geometry to Portage and Summit counties. Store the result as `sa`. You will also need a bounding box polygon of the study area for use in the inset map later — create it using `sf::st_bbox()` and `sf::st_as_sfc()` and store it as `oh_region`.
+
+```{r study_area, echo=TRUE, message=TRUE}
+# your code here
+```
+
+### 2.2 — Municipal boundaries with labels
+
+Load `oh_places.gpkg`. Before doing any spatial operations, check the CRS against `sa` and reproject if necessary. Spatially filter to the study area using `sf::st_intersection()`.
+
+Build a map layer showing municipal boundaries with text labels for place names. In `tmap`, labels can be added using `tm_text()` as a separate layer, or via the `labels` argument in some geometry functions.
+
+```{r places, echo=TRUE, message=TRUE}
+# your code here
+```
+
+*Note: You may want to adjust label size or use `tm_text(size = ...)` to avoid overlap. This often requires experimentation.*
+
+### 2.3 — Parks symbolized by type
+
+Load `oh_parks.gpkg`. Reproject to match `sa` and spatially intersect. Symbolize the parks by their `FEATTYPE` attribute using **shades of green**. You have discretion over the exact palette — consult the `tmap` documentation or ColorBrewer for options.
+
+```{r parks, echo=TRUE, message=TRUE}
+# your code here
+```
+
+### 2.4 — Water features and park intersections
+
+The linear water data for the two counties are stored in separate directories:
+
+- `../data/static_mapping/tl_2022_39133_linearwater/` (Portage County)
+- `../data/static_mapping/tl_2023_39153_linearwater/` (Summit County)
+
+Load both shapefiles, combine them using `dplyr::bind_rows()`, and reproject to match `sa`.
+
+Next, determine which stream segments **spatially intersect** a park polygon. Use `sf::st_intersects()` to identify these segments and add a new column to your water features data frame (e.g., `intersects_park`) with a value of `TRUE` or `FALSE`. Use this column to symbolize the streams differently.
+
+```{r water, echo=TRUE, message=TRUE}
+# your code here
+```
+
+### 2.5 — Assemble the local map
+
+Combine your places, parks, and water layers into a single map variable called `map_local`.
+
+```{r map_local, echo=TRUE, message=TRUE}
+# your code here
+
+map_local
+```
+
+**Reflection question 2 (answer in your repo):** Describe the cartographic decisions you made about visual hierarchy in this map. Which features should visually dominate, and what specific symbol choices (size, color, transparency) did you make to achieve that? Why?
+
+---
+
+## Task 3: Raster integration and layout elements
+
+*Reference: Lovelace Ch 9.2.5 (layouts and map elements)*
+
+Group 3 was responsible for integrating the DEM, adding layout elements, and combining everything. Let's start with the raster component.
+
+### 3.1 — Prepare the DEM
+
+Load `neoh_dem.tif` using `terra::rast()`.
+
+Before cropping, **project** it to match the CRS of `sa` using `terra::project()`. Then crop to the study area extent. Add a comment explaining your workflow choices.
+
+```{r dem, echo=TRUE, message=TRUE}
+# your code here
+```
+
+*Tip: Projecting a large raster can be slow. Cropping AFTER projecting (as shown here) crops the projected version; cropping BEFORE projecting (to a smaller area first) can be faster. There are trade-offs — consider what's appropriate here.*
+
+### 3.2 — Build the integrated local map
+
+Now build a more complete version of the local map that incorporates the DEM. Requirements:
+
+- The DEM as the base layer, using a continuous color scale appropriate for elevation (e.g., `YlGn`, `terrain`, or another sequential palette)
+- The Portage and Summit county polygons overlaid with **semi-transparency** (`fill_alpha`) so the elevation shows through
+- Your parks and water features from Task 2
+- A north arrow: `tm_compass()`
+- A scale bar
+
+Store this as `map_local_elev`.
+
+```{r map_local_elev, echo=TRUE, message=TRUE}
+# your code here
+
+map_local_elev
+```
+
+**Reflection question 3 (answer in your repo):** How does adding the elevation layer change the map's visual story? Did it create any visual hierarchy problems, and if so, how did you address them?
+
+---
+
+## Task 4: Multi-panel arrangement and inset maps
+
+*Reference: Lovelace Ch 9.2.6 (faceted maps) and Ch 9.2.7 (inset maps)*
+
+This task has two parts. The first uses `tmap_arrange()` — a straightforward approach to multi-panel maps. The second builds a proper inset, which is more powerful but more involved.
+
+### 4.1 — Side-by-side with `tmap_arrange()`
+
+Use `tmap_arrange()` to display `map_ohio` and `map_local_elev` side by side. Experiment with the `ncol` and `asp` arguments to get a reasonable layout.
+
+```{r tmap_arrange, echo=TRUE, message=TRUE}
+# your code here
+```
+
+**Reflection question 4 (answer in your repo):** `tmap_arrange()` is easy to use, but it has real limitations compared to a true inset. What are at least two limitations? (Think about how the two maps relate spatially and what information is or isn't communicated.)
+
+### 4.2 — Building the inset map
+
+A true inset map places a small context map *inside* the main map — a common technique for showing where a study area sits within a larger geographic context. Achieving this in `tmap` requires the `grid` package's viewport system.
+
+Below is a partially complete code skeleton. **Read every comment carefully** before filling in the blanks. The concepts behind the viewports are more important than getting the aesthetics perfect on the first try.
+
+```{r inset_map, echo=TRUE, message=TRUE}
+
+# ---- Step 1: Build the inset (context) map ----
+# This is the small map of all of Ohio that shows where our study area is.
+# oh_region is the bounding box polygon you created in Task 2.1.
+
+map_inset <- tm_shape(___) + tm_polygons() +        # fill in: all Ohio counties
+  tm_shape(oh_region) + tm_borders(lwd = ___, col = "red") +  # fill in: border width
+  tm_layout(bg.color = "lightblue") +
+  tm_scalebar(position = c("left", "bottom"))
+
+
+# ---- Step 2: Normalize dimensions ----
+# A viewport is defined in "normalized parent coordinates" (npc) from 0 to 1.
+# If we just use width and height directly, maps with very different aspect ratios
+# will appear distorted. norm_dim() calculates the width and height as fractions
+# of the longest dimension, so that the aspect ratio is preserved.
+
+norm_dim <- function(obj) {
+  bbox <- st_bbox(obj)
+  width  <- bbox[["xmax"]] - bbox[["xmin"]]
+  height <- bbox[["ymax"]] - bbox[["ymin"]]
+  w <- width  / max(width, height)
+  h <- height / max(width, height)
+  return(unit(c(w, h), "snpc"))
+}
+
+# Calculate dimensions for both maps
+# The main map is based on the study area bounding box (oh_region)
+# The inset map is based on all of Ohio
+main_dim <- norm_dim(___)  # fill in: use oh_region
+ins_dim  <- norm_dim(___)  # fill in: use the all-Ohio sf object
+
+
+# ---- Step 3: Define viewport positions ----
+# A viewport is a rectangular region of a graphics device.
+# main_vp defines the size of the main map within the graphics window.
+# ins_vp defines the size AND position of the inset.
+
+main_vp <- viewport(width = main_dim[1], height = main_dim[2])
+
+ins_vp <- viewport(
+  width  = ins_dim[1] * 0.4,              # scale the inset to 40% of normalized Ohio width
+  height = ins_dim[2] * 0.4,              # scale proportionally
+  x      = unit(1, "npc") - unit(0.5, "cm"),  # right edge of device minus a small margin
+  y      = unit(0.01, "npc"),             # near the bottom of the device
+  just   = c("right", "bottom")           # anchor point for the inset
+)
+
+
+# ---- Step 4: Draw ----
+# grid.newpage() clears the device.
+# print(..., vp = ...) draws a tmap within a specific viewport.
+# pushViewport() makes the main viewport the "active" coordinate system,
+#   so the inset is positioned relative to the main map, not the whole device.
+
+grid.newpage()
+print(map_local_elev, vp = main_vp)
+pushViewport(main_vp)
+print(map_inset, vp = ins_vp)
+```
+
+Your first attempt will not look perfect — that is expected and intentional. You will need to:
+
+- Fill in the four blanks (`___`)
+- Adjust the scale factor (`0.4`) and margin (`0.5, "cm"`) to improve the inset's size and placement
+- Add a title using `tm_title()` or `tm_layout(title = ...)` to `map_local_elev`
+
+*Note: Getting the position right requires iterating. Try different values for the scale factor (e.g., `0.3`, `0.5`) and the margin. A scale factor around `0.35–0.45` and bottom-right or bottom-left placement usually works well for this study area.*
+
+**Reflection question 5 (answer in your repo):** In your own words, explain what `norm_dim()` is doing and why it is necessary. What specific visual problem would occur if you skipped that step and passed the raw coordinate extents to `viewport()` directly?
+
+---
+
+## Task 5: Your own static map
+
+Using whatever spatial data, extent, and domain you choose, create an original static map. Requirements:
+
+1. It must include **vector AND raster data** used together in a meaningful way
+2. It must include spatial data representing a **social process** (e.g., political boundaries, land use, population) AND an **environmental process** (e.g., elevation, water, vegetation, climate)
+3. The map should **stand on its own** and communicate its purpose without additional explanatory text — if a reader needs to ask "what am I looking at?", the map hasn't done its job
+4. Good coding practices: comments, relative paths, clean variable names
+
+You may use data from any of the course datasets (CBW, Ohio, Lake Erie) or data you obtain independently. If using external data, document the source in a comment.
+
+```{r your_map, echo=TRUE, message=TRUE}
+# your code here
+```
+
+---
+
+## Questions
+
+1. Describe and justify your cartographic choices in Task 1 (Ohio choropleth). Specifically address: your classification method, your color palette, and how these choices serve the map's intended communication goal. Would the map tell a different story with different choices?
+
+2. In Task 2.4 you identified stream segments that intersect parks. Describe your approach step by step, as if explaining it to a classmate who hasn't done spatial data analysis before. Why is this distinction cartographically meaningful — i.e., why might a map reader care which streams run through parks?
+
+3. In Task 4, you used both `tmap_arrange()` and the `grid` viewport approach to create multi-panel maps. What are the trade-offs between these two methods? In what professional or analytical context would you prefer one over the other?
+
+4. Compare the cartographic decisions you made individually in this lab to the decisions your group made collectively during the in-class frankenmap exercise. Where did your choices diverge, and what explains the difference?
+
+5. Describe your original map in Task 5: what spatial story are you trying to tell, did you achieve your communication goal, and what would you change given more time?
+
+---
+
+## Bonus (+30 points)
+
+Adapt your Task 4.2 inset map to a **different study area of your choosing** — not Portage and Summit counties. The requirements are the same: a detail map with raster base, multiple vector layers, and a context inset. But this time, demonstrate that your code is generalizable. Your solution should work by changing the study area filter and data paths — not by rewriting the viewport logic from scratch.
+
+Briefly explain in a comment what changes you made and what stayed the same.
+
+```{r bonus, echo=TRUE, message=TRUE}
+# your code here
+```
