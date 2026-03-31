@@ -33,7 +33,11 @@ You will find two subdirectories:
 - `images/` — seven weekly composite GeoTIFF rasters of cyanobacteria bloom intensity in Lake Erie (summer–fall 2017)
 - `bounds/` — several shapefiles representing geographic areas of interest within the Lake Erie region
 
-**Before writing any code, read the metadata file at `../data/wildcard_thursday/erie_raster_ex/erie_README.txt`.** This is not optional. Understanding your data source, its scaling, and its data key is essential for correct analysis.
+**Before writing any code, read the metadata file at**
+
+**`../data/wildcard_thursday/erie_raster_ex/erie_README.txt`.** 
+
+This is not optional. Understanding your data source, its scaling, and its data key is essential for correct analysis.
 
 ## Introduction
 
@@ -50,21 +54,22 @@ library(terra)
 library(sf)
 library(tidyverse)
 library(tmap)
+library(fs)
 ```
 
 ---
 
 ## Task 1: Data management and preprocessing
 
-### 1.1 — Inventory your rasters
+### 1.1 Inventory your rasters
 
-Use `list.files()` with `pattern = "\\.tif$"` and `full.names = TRUE` to get the file paths for all raster images in the `images/` directory. Store the result in an object called `raster_files`. Print the result — how many files are there?
+Use `fs::dir_ls` with the parameter `regexp = "\\.tif$"` to get the file paths for all raster images in the `images/` directory. Store the result in an object called `raster_files`. Print the result — how many files are there?
 
 ```{r list_files, echo=TRUE, message=TRUE}
 # your code here
 ```
 
-### 1.2 — Inspect a single raster
+### 1.2 Inspect a single raster
 
 Load the first raster in your list using `terra::rast()`. Examine the following properties and record what you find:
 
@@ -78,14 +83,14 @@ Load the first raster in your list using `terra::rast()`. Examine the following 
 # your code here
 ```
 
-### 1.3 — Write a preprocessing function: `clean_cicyano()`
+### 1.3 Write a preprocessing function: `clean_cicyano()`
 
 Looking at the data key in the README, you will notice that values of 0 and 250 and above have special meanings — they are **not** valid bloom observations. Before doing any analysis, these sentinel values must be replaced with `NA`.
 
 Write a function called `clean_cicyano(r)` that:
 
 1. Takes a SpatRaster `r` as input
-2. Builds a reclassification matrix that maps **0** and **all values ≥ 250** to `NA`, and leaves values 1–249 unchanged
+2. Builds a reclassification matrix that maps **0** and **all values >= 250** to `NA`, and leaves values 1–249 unchanged
 3. Applies the reclassification using `terra::classify()` with the argument `others = NA` (this is a useful argument — look it up)
 4. Returns the cleaned raster
 
@@ -97,7 +102,7 @@ Write a function called `clean_cicyano(r)` that:
 
 Test your function on the first raster. Verify it worked by comparing the global min/max of the raw raster vs. the cleaned raster.
 
-### 1.4 — Write a transform function: `dn_to_ci()`
+### 1.4 Write a transform function: `dn_to_ci()`
 
 The DN values in these rasters are scaled according to the formula in the README. To convert back to physical CI units, use the reverse-scaling formula:
 
@@ -123,7 +128,7 @@ Test your function. What is the range of CI values in the transformed raster? Do
 
 ## Task 2: Spatial subsetting — crop and mask
 
-### 2.1 — Load and align an area of interest
+### 2.1 Load and align an area of interest
 
 Load the `bb_erie_sandusky` shapefile from the `bounds/` directory using `sf::read_sf()`. Check its CRS. If it does not match the raster CRS, reproject it using `sf::st_transform()`.
 
@@ -131,7 +136,7 @@ Load the `bb_erie_sandusky` shapefile from the `bounds/` directory using `sf::re
 # your code here
 ```
 
-### 2.2 — Crop and mask
+### 2.2 Crop and mask
 
 Using the **August 16–22, 2017** raster (`ts_2017.0816_0822`):
 
@@ -145,7 +150,7 @@ Store your final result as `sandusky_0816`.
 # your code here
 ```
 
-### 2.3 — Compare full vs. masked
+### 2.3 Compare full vs. masked
 
 Using `terra::global()`, calculate and compare the **mean** CI value for:
 
@@ -156,7 +161,7 @@ Using `terra::global()`, calculate and compare the **mean** CI value for:
 # your code here
 ```
 
-### 2.4 — Map it
+### 2.4 Map it
 
 Create a `tmap` map of `sandusky_0816`. Your map should include:
 
@@ -178,17 +183,17 @@ Create a `tmap` map of `sandusky_0816`. Your map should include:
 
 ## Task 3: Multi-temporal comparison
 
-### 3.1 — Load and stack multiple rasters
+### 3.1 Load and stack multiple rasters
 
 Load and clean **at least four** of the seven rasters (choose dates that span a meaningful time range). Apply `clean_cicyano()` and `dn_to_ci()` to each. Then combine them into a single multi-layer SpatRaster using `c()`.
 
-*Tip: using `lapply()` over your `raster_files` vector, combined with your preprocessing functions, can make this more efficient.*
+*Tip: using `purrr::map()` over your `raster_files` vector, combined with your preprocessing functions, can make this more efficient.*
 
 ```{r stack_rasters, echo=TRUE, message=TRUE}
 # your code here
 ```
 
-### 3.2 — Temporal summary
+### 3.2 Temporal summary
 
 Use `terra::global()` on your multi-layer raster to calculate the **mean** CI value per layer (use `na.rm = TRUE`). This will give you one mean value per date.
 
@@ -198,7 +203,7 @@ Organize the results into a data frame with at minimum two columns: `date` and `
 # your code here
 ```
 
-### 3.3 — Plot the time series
+### 3.3 Plot the time series
 
 Using `ggplot2`, create a line or point plot showing mean CI values over time. Label your axes clearly. Which date in your dataset shows the highest mean bloom intensity?
 
@@ -206,7 +211,7 @@ Using `ggplot2`, create a line or point plot showing mean CI values over time. L
 # your code here
 ```
 
-### 3.4 — Binary bloom comparison
+### 3.4 Binary bloom comparison
 
 Choose any **two dates** from your dataset. For each, create a binary raster where cells with valid CI values are coded as `1` and all other cells (NA) as `0`. You will need to think about how to do this using `terra::classify()` or logical raster operations.
 
@@ -241,7 +246,7 @@ Use `list.files()` to get all `.shp` files from the `bounds/` directory. Load ea
 # your code here
 ```
 
-### 4.2 — Extract by area
+### 4.2 Extract by area
 
 Using the date you identified in Task 3.3 as having the highest mean bloom intensity, extract CI values for each area of interest using `terra::extract()`. Calculate the **mean** and **maximum** CI per AOI.
 
@@ -251,7 +256,7 @@ Using the date you identified in Task 3.3 as having the highest mean bloom inten
 # your code here
 ```
 
-### 4.3 — Summary table
+### 4.3 Summary table
 
 Present your results as a clean summary table. Which AOI had the highest mean CI value on that date? Which had the highest maximum?
 
@@ -259,7 +264,7 @@ Present your results as a clean summary table. Which AOI had the highest mean CI
 # your code here
 ```
 
-### 4.4 — Map with AOI overlays
+### 4.4 Map with AOI overlays
 
 Create a `tmap` map showing the CI raster for your chosen date with the AOI boundaries overlaid. Use `tm_borders()` for the boundaries and label them if possible.
 
@@ -275,57 +280,13 @@ Create a `tmap` map showing the CI raster for your chosen date with the AOI boun
 
 ---
 
-## Task 5: Automation with functions
-
-### 5.1 — Write `bloom_summary()`
-
-Write a function called `bloom_summary(raster_path, aoi)` that:
-
-1. Reads a raster from `raster_path` using `terra::rast()`
-2. Applies `clean_cicyano()` and `dn_to_ci()`
-3. Crops and masks to the `aoi` sf object
-4. Returns a **named list** containing:
-   - `date`: a string parsed from the filename (the `MMDD_MMDD` portion)
-   - `mean_ci`: mean CI value within the AOI (use `terra::global()`, `na.rm = TRUE`)
-   - `max_ci`: maximum CI value within the AOI
-   - `bloom_cell_count`: number of non-NA cells in the masked raster (use `terra::global()` with `"notNA"`)
-
-```{r bloom_summary_function, echo=TRUE, message=TRUE}
-# your code here
-```
-
-### 5.2 — Apply across all rasters
-
-Using `purrr::map()` or `lapply()`, apply `bloom_summary()` to **all seven rasters** in `raster_files`, using the Sandusky Bay AOI. Convert the resulting list to a data frame using `dplyr::bind_rows()`.
-
-Print the resulting data frame. On which date was the Sandusky Bay bloom the largest (by cell count)? The most intense (by mean CI)?
-
-```{r apply_function, echo=TRUE, message=TRUE}
-# your code here
-```
-
----
 
 ## Questions
 
 1. Throughout this lab you have been working with **raster** data. In what ways was the analysis workflow different from working with vector data (like you did in Labs 1–3)? What concepts translated directly, and what was fundamentally different?
 
-2. Cyanobacteria blooms are affected by temperature, nutrient runoff, and lake circulation. Based on the temporal patterns you observed in Task 3, does the timing of peak bloom match what you would expect ecologically? Explain your reasoning.
+2. Cyanobacteria blooms are affected by temperature, nutrient runoff, and lake circulation. Based on the temporal patterns you observed in Task 3, does the timing of peak bloom match what you would expect ecologically? Explain your reasoning (I know you're not an expert on blooms - just demonstrate thinking).
 
 3. We used `terra::extract()` in Task 4 to perform a zonal summary. How does this relate conceptually to the **zonal operations** category of map algebra discussed in class?
 
-4. The `bloom_summary()` function you wrote in Task 5 is reusable across any raster and AOI. What additional arguments might you add to make it more flexible? What error handling might be useful?
 
----
-
-## Bonus (+30 points)
-
-Extend your Task 5.2 analysis: apply `bloom_summary()` across **all rasters** AND **all AOIs**, producing a comprehensive summary data frame with columns for `date`, `aoi_name`, `mean_ci`, `max_ci`, and `bloom_cell_count`.
-
-Use this data frame to create a **faceted `ggplot2` visualization** — one panel per AOI — showing how bloom intensity (your choice of metric) varies over the season. Which AOI shows the most dramatic temporal variation?
-
-*Tip: `purrr::map2()` or nested `lapply()` calls can help iterate over two vectors simultaneously.*
-
-```{r bonus, echo=TRUE, message=TRUE}
-# your code here
-```
