@@ -19,7 +19,7 @@ The chapter covers:
 - Facets (multi-panel maps)
 - Insets
 
-We will walk through all of these today, using example data from the `spData` package and then Ohio data from our course repository.
+We will walk through all of these today, first using example data from the `spData` package, then Ohio data from our course repository.
 
 ---
 
@@ -61,6 +61,13 @@ nz_elev <- rast(system.file("raster/nz_elev.tif", package = "spDataLarge"))
 These pieces are combined with `+`, just like `ggplot2`.
 
 Let's start with the simplest possible maps using the `nz` dataset (New Zealand regions, from `spData`).
+
+Check it out first: 
+
+```{r}
+spData::nz
+```
+
 
 A filled polygon map:
 
@@ -147,7 +154,7 @@ A few things to note:
 The composable structure gives us a clean pattern for complex maps:
 
 ```
-map <- tm_shape(base_data) + tm_polygons() +   # base layer
+map <- tm_shape(base_data) + tm_polygons() +    # base layer
        tm_shape(layer_2)   + tm_lines() +       # second dataset
        tm_shape(layer_3)   + tm_symbols() +     # third dataset
        tm_scalebar() + tm_compass()             # layout
@@ -247,7 +254,7 @@ tm_shape(nz) +
                                       position = tm_pos_out("center", "bottom")))
 ```
 
-Keep portrait mode but move to the bottom:
+Keep portrait mode but move legend to the bottom:
 
 ```{r}
 tm_shape(nz) +
@@ -333,7 +340,7 @@ map.arr
 - *Each panel is an independent map with its own extent, scale, and legend — they are NOT linked*
 - *Scales are not shared across panels by default, so a feature in panel 1 and panel 3 may look the same color but represent different values*
 - *It is great for comparing different variables or methods for the same area, or for showing workflow steps side-by-side*
-- *It is **not** the right tool for an inset, where the context map needs to be visually inside the detail map*
+- *It is NOT the right tool for an inset, where the context map needs to be visually inside the detail map*
 
 ---
 
@@ -358,11 +365,11 @@ tmap_arrange(ma1, ma2, ma3, ma4, ma5, ma6)
 
 # A bridge to the Ohio data
 
-Everything above used New Zealand example data. Let's switch to our actual course data before the activity — just to make sure the data loads and looks right.
+Everything above used New Zealand example data. Let's switch to our course data before the activity — just to make sure the data loads and looks right.
 
 ```{r}
 allohio <- sf::read_sf("../data/static_mapping/oh_counties.gpkg")
-sa      <- allohio %>% dplyr::filter(NAME %in% c("Portage", "Summit"))
+sa <- allohio %>% dplyr::filter(NAME %in% c("Portage", "Summit"))
 ```
 
 A simple map of all Ohio counties. Note there's no demographic variable yet — we'll add that in the activity.
@@ -377,7 +384,7 @@ Load and prep the DEM for the study area. We project it first (so units are cons
 
 ```{r}
 myras <- rast("../data/static_mapping/neoh_dem.tif") %>%
-  terra::project(., sf::st_crs(sa)$wkt) %>%
+  terra::project(., sf::st_crs(sa)$wkt) %>%. # note that terra uses "project" instead of "transform"
   terra::crop(., sa)
 ```
 
@@ -390,8 +397,6 @@ tm_shape(myras) +
   tm_shape(sa) + tm_polygons(fill_alpha = 0.2) +
   tm_scalebar(position = c("left", "bottom"))
 ```
-
-*This is the core of what Group 3 will build out. What's still missing? The join for census data, parks, water features, labels — and the inset. Let's cover inset maps before we start the activity.*
 
 ---
 
