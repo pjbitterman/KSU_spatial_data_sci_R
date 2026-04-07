@@ -1,0 +1,257 @@
+---
+title: "Lab 00"
+#author: "Dr. Patrick Bitterman"
+#date: "`r format(Sys.time(), '%Y %B %d')`"
+output: pdf_document
+my_subtitle: "Env Analysis in R"
+fancy: true
+geometry: margin=1in
+latex_engine: pdflatex
+colorlinks: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Lab 00: Getting set up with R, RStudio, and GitHub
+
+### Read the instructions COMPLETELY before starting the lab
+
+This lab is designed to get you set up with the tools we will use throughout the semester: R, RStudio, and GitHub. It also introduces you to the most basic operations in R. Completing this lab successfully means you have a working environment and can demonstrate some fundamental R skills. Everything in this lab will be used — and built upon — in every lab that follows.
+
+### Formatting your submission
+
+This lab must be placed into a public repository on GitHub (www.github.com). Before the due date, submit **on Canvas** a link to the repository. I will then download your repositories and run your code. For this lab, your submission must be an **RMarkdown (.Rmd) document**. Any data you reference must use **relative path names** so that your code runs on my machine as well as yours.
+
+
+## Part 1: Getting set up
+
+Work through each step below before moving on to the R content.
+
+**Step 1: Install R**
+
+Download and install R from CRAN: https://cran.r-project.org. Choose the version appropriate for your operating system. Accept all default settings during installation.
+
+**Step 2: Install RStudio**
+
+Download and install RStudio Desktop (the free version) from https://posit.co/download/rstudio-desktop. RStudio is an IDE (integrated development environment) that makes working with R much easier. R and RStudio are separate programs — you need both.
+
+**Step 3: Create a GitHub account**
+
+If you do not already have one, create a free account at https://github.com. Use a professional username, as you may use this account beyond this class.
+
+**Step 4: Install GitHub Desktop**
+
+Download and install GitHub Desktop from https://desktop.github.com. This application gives you a graphical interface for working with Git and GitHub without needing to use the command line.
+
+**Step 5: Create a new repository**
+
+On GitHub (in your browser), create a new **public** repository. Give it a sensible name (e.g., `env-analysis-labs`). Initialize it with a README file. This is the repository where all of your lab submissions will live this semester.
+
+**Step 6: Clone the repository**
+
+In GitHub Desktop, clone the repository you just created to a location on your computer that you can find easily. This downloads a local copy that stays synchronized with GitHub.
+
+**Step 7: Open this lab file in RStudio**
+
+Move or save this `.Rmd` file into your cloned repository folder. Open RStudio, then open the `.Rmd` file. You are now ready to begin.
+
+
+## Part 2: Your first RMarkdown document
+
+An RMarkdown document has three components:
+
+1. **The YAML header** — the block at the top between the `---` lines. It controls metadata like the title and output format.
+
+2. **Prose** — regular text written in Markdown. This is where you write explanations, answer questions, and describe your work.
+
+3. **Code chunks** — blocks of R code enclosed between ` ```{r} ` and ` ``` `. R executes this code when you knit the document.
+
+To produce a PDF from this document, click the **Knit** button at the top of the RStudio editor (or use Ctrl+Shift+K / Cmd+Shift+K). Try it now before continuing.
+
+### Inserting a code chunk
+
+You can insert a new code chunk by:
+
+- Clicking the **Insert** button in the RStudio editor toolbar and selecting "R"
+- Using the keyboard shortcut: Ctrl+Alt+I (Windows) or Cmd+Option+I (Mac)
+
+Try inserting a chunk now and typing `1 + 1` inside it. Knit the document again and confirm the output appears in the PDF.
+
+
+## Part 3: Basic R operations
+
+R can be used as a calculator. The basic arithmetic operators are `+`, `-`, `*`, `/`, and `^` (exponent).
+
+```{r arithmetic}
+5 + 3
+12 / 4
+2^8
+```
+
+You can store values in **variables** using the assignment operator `<-`. Variable names are case-sensitive.
+
+```{r variables}
+x <- 42
+y <- 3.14
+x * y
+```
+
+R has several basic **data types**. The most common are:
+
+- `numeric` — numbers (e.g., `3.14`, `100`)
+- `character` — text, always in quotes (e.g., `"hello"`)
+- `logical` — `TRUE` or `FALSE`
+
+You can check the type of any object with `class()`:
+
+```{r data-types}
+class(42)
+class("hello")
+class(TRUE)
+```
+
+
+## Part 4: Vectors
+
+A **vector** is an ordered collection of values of the same type. Create one with `c()` (short for "combine"):
+
+```{r vectors}
+temps <- c(72, 68, 75, 80, 65)
+names <- c("Alice", "Bob", "Carol")
+```
+
+Arithmetic on numeric vectors is applied element-wise:
+
+```{r vector-math}
+temps + 10        # add 10 to every element
+temps * (5/9)     # convert Fahrenheit to Celsius (roughly)
+```
+
+Several built-in functions summarize numeric vectors:
+
+```{r vector-summary}
+sum(temps)
+mean(temps)
+length(temps)
+min(temps)
+max(temps)
+```
+
+
+## Part 5: Packages
+
+R's base functionality can be extended with **packages** — collections of functions written by the R community. Two important commands:
+
+- `install.packages("packagename")` — downloads and installs the package. You only need to do this **once** per machine.
+- `library(packagename)` — loads the package into your current R session. You need to do this **every time** you start a new session.
+
+```{r load-packages, message=FALSE}
+# install.packages("tidyverse")  # run this once in the console, not in your script
+library(tidyverse)
+```
+
+Note that the `install.packages()` line above is commented out. It is generally bad practice to include `install.packages()` calls in a script or `.Rmd` file that will be run repeatedly or shared, because it re-installs the package every time the code runs.
+
+
+## Part 6: Reading and summarizing data
+
+We will start with R's built-in `iris` dataset, which requires no external file. You can load it with `data()`:
+
+```{r load-iris}
+data(iris)
+```
+
+Several functions help you get a quick look at any dataset:
+
+```{r explore-iris}
+head(iris)      # first 6 rows
+tail(iris)      # last 6 rows
+summary(iris)   # summary statistics for each column
+glimpse(iris)   # compact overview of structure
+```
+
+In this course, you will more commonly read data from external files. The `read_csv()` function from the `tidyverse` is the standard way to do this. Note the use of a **relative path** — the `..` moves up one directory level from the `labs/` folder to the root of the repository, then into `data/`:
+
+```{r read-csv}
+ne_counties <- read_csv("./data/ne_counties.csv")
+glimpse(ne_counties)
+```
+
+This dataset contains demographic and geographic information for counties in Nebraska. Notice that `glimpse()` tells you the number of rows and columns, and shows the data type of each column.
+
+
+## Part 7: Basic plotting
+
+The simplest way to make a histogram in R is with `hist()`. The `main`, `xlab`, and `ylab` arguments control the title and axis labels:
+
+```{r base-hist}
+hist(iris$Sepal.Length,
+     main = "Distribution of Sepal Length",
+     xlab = "Sepal Length (cm)",
+     ylab = "Frequency")
+```
+
+The `breaks` argument controls the number of bins:
+
+```{r base-hist-bins}
+hist(iris$Sepal.Length,
+     breaks = 20,
+     main = "Distribution of Sepal Length (more bins)",
+     xlab = "Sepal Length (cm)",
+     ylab = "Frequency")
+```
+
+
+
+## Your tasks
+
+Complete each task **completely using R code**. You must show your work. Label your variables sensibly and use comments so I can follow your reasoning. Insert a new code chunk for each task (do not reuse the walkthrough chunks above).
+
+### Task 1: R as a calculator
+
+1.1 Create a variable that stores a number representing your approximate age in years. Convert it to days and print the result. (Note: a fake or rounded age is fine.)
+
+1.2 Create two numeric vectors, each of length 5. Add them together, then compute the `mean()` and `sum()` of the result.
+
+### Task 2: Working with data types
+
+2.1 Create a character vector containing the names of four U.S. states. Create a logical vector of the same length indicating whether each state is in the Midwest. Print both vectors.
+
+2.2 Attempt to compute the `mean()` of your character vector from 2.1. Show the result (including any error or warning message) and write a comment explaining what happened and why.
+
+### Task 3: Packages
+
+3.1 In a code chunk, load the `tidyverse` package. Write a comment in your code explaining the difference between `install.packages()` and `library()`, and why you should not include `install.packages()` inside a script you run regularly.
+
+3.2 Run `sessionInfo()` and leave the output visible in your knitted document.
+
+### Task 4: Reading and exploring a dataset
+
+4.1 Read the `ne_counties.csv` file using `read_csv()`. Run `head()`, `tail()`, and `summary()` on it. For each function, write a short comment describing what it tells you about the data.
+
+4.2 Use `glimpse()` to inspect the dataset. In a comment, report how many rows and columns it has and identify at least one column that is numeric and one that is a character type.
+
+### Task 5: RMarkdown practice
+
+5.1 Insert a **new** code chunk (use the Insert button or keyboard shortcut — do not copy and paste an existing chunk). In that chunk, write code that prints the message `"Lab 00 complete"`. Knit your document and confirm the output appears in the PDF.
+
+### Task 6: Basic plotting
+
+6.1 Using the `ne_counties` data you read in Task 4, make a histogram of the `ALAND10` column (land area) using `hist()`. Give the plot an informative title and label both axes.
+
+6.2 Make a second histogram of a different numeric column from `ne_counties` of your choosing. Use the `breaks` argument to change the number of bins. Label your axes and give the plot a title.
+
+
+## Questions
+
+Answer the following questions in your `.Rmd` document as prose (plain text, not in a code chunk). There are no wrong answers to question 3.
+
+1. What is the difference between `install.packages()` and `library()`? Why would it be problematic to call `install.packages()` every time you run your script or knit your document?
+
+2. What does a **relative file path** mean? Why does this course require you to use relative paths instead of absolute paths when referencing data files?
+
+3. What did you find confusing or surprising about RStudio, R, or GitHub during this lab? What questions do you still have going into Lab 01?

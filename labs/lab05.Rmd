@@ -325,7 +325,7 @@ You may use data from any of the course datasets (CBW, Ohio, Lake Erie) or data 
 
 1. Describe and justify your cartographic choices in Task 1 (Ohio choropleth). Specifically address: your classification method, your color palette, and how these choices serve the map's intended communication goal. Would the map tell a different story with different choices?
 
-2. In Task 2.4 you identified stream segments that intersect parks. Describe your approach step by step, as if explaining it to a classmate who hasn't done spatial data analysis before. Why is this distinction cartographically meaningful — i.e., why might a map reader care which streams run through parks?
+2. In Task 2.4 you identified stream segments that intersect parks. Describe your approach step by step, as if explaining it to a classmate who hasn't done spatial data analysis before. Why is this distinction cartographically meaningful (*i.e., why might a map reader care which streams run through parks)?
 
 3. In Task 4, you used both `tmap_arrange()` and the `grid` viewport approach to create multi-panel maps. What are the trade-offs between these two methods? In what professional or analytical context would you prefer one over the other?
 

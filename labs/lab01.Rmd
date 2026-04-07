@@ -20,11 +20,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### Read the instructions COMPLETELY before starting the lab
 
-This lab builds on many of the discussions and exercises from class. This lab also builds on Chapters 1-3 from your textbook, as well at R for Data Science by Hadley Wickham and Garrett Grolemund (https://r4ds.hadley.nz)
+This lab builds on many of the discussions and exercises from class. This lab also builds on Chapters 1-3 from your textbook, as well as R for Data Science by Hadley Wickham and Garrett Grolemund (https://r4ds.hadley.nz)
 
 ### Formatting your submission
 
-This lab must be placed into a public repository on GitHub (www.github.com). Before the due date, submit **on Canvas** a link to the repository. I will then download your repositories and run your code. The code must be contained in either a .R script or a .Rmd markdown document. As I need to run your code, any data you use in the lab must be referenced using **relative path names**. Finally, answers to questions I pose in this document must also be in the repository at the time you submit your link to Canvas. They can be in a separte text file, or if you decide to use an RMarkdown document, you can answer them directly in the doc.
+This lab must be placed into a public repository on GitHub (www.github.com). Before the due date, submit **on Canvas** a link to the repository. I will then download your repositories and run your code. The code must be contained in either a .R script or a .Rmd markdown document. As I need to run your code, any data you use in the lab must be referenced using **relative path names**. Finally, answers to questions I pose in this document must also be in the repository at the time you submit your link to Canvas. They can be in a separate text file, or if you decide to use an RMarkdown document, you can answer them directly in the doc.
 
 ## Exploratory data analysis
 
@@ -74,7 +74,7 @@ d.counties %>% dplyr::select(GEOID10, ALAND10) %>% head()
 # head truncates the data.frame to the first n rows
 
 ```
-Note that because we're using a spatial data frame in the `sf` package, the geometry is preserved, even though we didn't specify it. We can also get omit of attributes we DON'T want (but not the geometry attribute) using a `-` flag. For example, the following code "drops" the `NAME10` attribute:
+Note that because we're using a spatial data frame in the `sf` package, the geometry is preserved, even though we didn't specify it. We can also omit of attributes we DON'T want (but not the geometry attribute) using a `-` flag. For example, the following code "drops" the `NAME10` attribute:
 
 ```{r noname, message=TRUE, echo=TRUE}
 d.counties %>% dplyr::select(-NAME10) %>% head()
@@ -96,7 +96,7 @@ d.counties %>% dplyr::select(starts_with("C"))
 ### Grouping data
 
 We can also "group" our data according to categorical data in our data frames. This is useful if you want to create a function that works across the entire group. For example, we'll create a new attribute the calculates the land area of all counties in each state.
-```{r grpuex, echo=TRUE, message=TRUE}
+```{r group-ex, echo=TRUE, message=TRUE}
 d.counties %>% group_by(STATEFP10) %>% mutate(stateLandArea = sum(ALAND10))
 ```
 
@@ -119,14 +119,14 @@ We can also use grouping functions in our visualization. For example:
 ```{r plots, echo=TRUE, message=TRUE}
 d.counties %>% 
   ggplot(., aes(x = as.factor(STATEFP10), y = ALAND10)) +
-  geom_boxplot(aes(fill = STATEFP10))
+  geom_boxplot(aes(fill = as.factor(STATEFP10)))
 ```
 Or:
 
 ```{r plots2, echo=TRUE, message=TRUE}
 d.counties %>% 
   ggplot(., aes(x = ALAND10)) +
-  geom_histogram(aes(fill = STATEFP10)) +
+  geom_histogram(aes(fill = as.factor(STATEFP10))) +
   labs(title = "not the most useful plot, but you get the idea")
 ```
 
@@ -140,7 +140,8 @@ d.counties %>% sf::st_crs()
 d.stations %>% sf::st_crs()
 ```
 
-They're the same, but we can formally check
+They're the same, but we can formally check.
+
 ```{r crscomp, echo=TRUE, message=TRUE}
 d.counties %>% sf::st_crs() == d.stations %>% sf::st_crs()
 ```
@@ -181,7 +182,7 @@ Complete each task COMPLETELY USING R CODE. YOU MUST SHOW YOUR WORK FOR EACH ANS
 
 ### Task 1: Basic data manipulation
 
-1.1 For each county, calculate its land area as percentage of the total area (land + water) for that state.
+1.1 For each county, calculate its percent of the county's land area as the percent of the total area (land + water) for that state. land_county / (land_state + water_state).
 
 1.2 For each state, find the county that has the largest proportion of its land as water (water area / total area)
 
