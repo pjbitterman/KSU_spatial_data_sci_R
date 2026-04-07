@@ -333,14 +333,3 @@ You may use data from any of the course datasets (CBW, Ohio, Lake Erie) or data 
 
 5. Describe your original map in Task 5: what spatial story are you trying to tell, did you achieve your communication goal, and what would you change given more time?
 
----
-
-## Bonus (+30 points)
-
-Adapt your Task 4.2 inset map to a **different study area of your choosing** — not Portage and Summit counties. The requirements are the same: a detail map with raster base, multiple vector layers, and a context inset. But this time, demonstrate that your code is generalizable. Your solution should work by changing the study area filter and data paths — not by rewriting the viewport logic from scratch.
-
-Briefly explain in a comment what changes you made and what stayed the same.
-
-```{r bonus, echo=TRUE, message=TRUE}
-# your code here
-```
