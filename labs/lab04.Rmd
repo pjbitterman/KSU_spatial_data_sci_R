@@ -91,10 +91,10 @@ Write a function called `clean_cicyano(r)` that:
 
 1. Takes a SpatRaster `r` as input
 2. Builds a reclassification matrix that maps **0** and **all values >= 250** to `NA`, and leaves values 1–249 unchanged
-3. Applies the reclassification using `terra::classify()` with the argument `others = NA` (this is a useful argument — look it up)
+3. Applies the reclassification using `terra::classify()`
 4. Returns the cleaned raster
 
-*Hint: Your reclassification matrix should handle the no-detection case (0) and all sentinel codes (250 through 255). Review how `terra::classify()` uses a three-column matrix to specify `[from, to, becomes]` intervals.*
+*Hint: Your reclassification matrix should handle the no-detection case (0) and all sentinel codes (250 through 255). Review how `terra::classify()` uses a three-column matrix to specify `[from, to, becomes]` intervals. You may find `right = NA` useful here so boundary values like 0 and 250 are included in the intervals.*
 
 ```{r clean_function, echo=TRUE, message=TRUE}
 # your code here
@@ -122,7 +122,7 @@ Test your function. What is the range of CI values in the transformed raster? Do
 
 **Q1.2** Why is it important to remove sentinel values *before* applying the DN-to-CI transform — rather than after? What would happen to a land pixel (value = 252) if you transformed it without cleaning first?
 
-**Q1.3** The `others = NA` argument in `terra::classify()` is useful here. In your own words, what does it do?
+**Q1.3** Why is the `right = NA` argument useful in `terra::classify()` for this task?
 
 ---
 
@@ -288,5 +288,4 @@ Create a `tmap` map showing the CI raster for your chosen date with the AOI boun
 2. Cyanobacteria blooms are affected by temperature, nutrient runoff, and lake circulation. Based on the temporal patterns you observed in Task 3, does the timing of peak bloom match what you would expect ecologically? Explain your reasoning (I know you're not an expert on blooms - just demonstrate thinking).
 
 3. We used `terra::extract()` in Task 4 to perform a zonal summary. How does this relate conceptually to the **zonal operations** category of map algebra discussed in class?
-
 
