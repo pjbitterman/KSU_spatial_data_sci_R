@@ -1,82 +1,211 @@
 ---
-title: "Lab 05"
+title: "Lab 06"
 #author: "Dr. Patrick Bitterman"
 #date: "`r format(Sys.time(), '%Y %B %d')`"
-output: 
-   pdf_document: 
-      template: my_template.tex
-      keep_tex: true
+output: html_document
 my_subtitle: "Env Analysis in R"
-fancy: true
 geometry: margin=1in
-latex_engine: pdflatex
-colorlinks: true
 ---
 
-# Lab 05: Dynamic mapping in Leaflet
+# Lab 06: Dynamic mapping with Leaflet
 
 ### Read the instructions COMPLETELY before starting the lab
 
-This lab builds on many of the discussions and exercises from class, including lab 4
+This lab builds directly on labs 2–4 and the in-class Leaflet exercises. You will need those lab files available for reference.
 
 ### Formatting your submission
 
 This lab must be placed into a public repository on GitHub (www.github.com). Before the due date, submit **on Canvas** a link to the repository. I will then download your repositories and run your code. The code must be contained in either a .R script or a .Rmd markdown document. As I need to run your code, any data you use in the lab must be referenced using **relative path names**. Finally, answers to questions I pose in this document must also be in the repository at the time you submit your link to Canvas. They can be in a separate text file, or if you decide to use an RMarkdown document, you can answer them directly in the doc.
 
+*Note: This lab is output as an HTML document — not a PDF. Leaflet maps are **interactive** and cannot be embedded in a static PDF. Your knitted output will be an `.html` file. Keep this in mind when organizing your submission.*
+
 ## Introduction
 
-This lab is much more free-form than previous assignments. You will be taking previous work from previous labs re-creating the maps using the Leaflet package. I encourage you to use whatever resources you find useful, including https://rstudio.github.io/leaflet/ and https://bookdown.org/nicohahn/making_maps_with_r5/docs/leaflet.html
+In the previous lab you built static maps using `tmap`. Static maps are excellent for print, publication, and controlled presentation. But many modern mapping applications demand **interactivity**: users want to pan, zoom, click, and toggle layers. Leaflet is the dominant open-source library for interactive web maps, and `leaflet` (the R package) wraps it for use in R.
 
+Leaflet's design philosophy is similar to `tmap` in that maps are built by **layering components**:
 
-## Your tasks
+```
+leaflet() %>%
+  addTiles() %>%                  # base map (tiles)
+  addPolygons(...) %>%            # vector layer
+  addLegend(...) %>%              # legend
+  addLayersControl(...)           # layer toggle
+```
 
-For this lab, you will re-create maps from labs 2-4 using Leaflet. Below, I have referenced a specific question or task from lab 2, lab 3, and lab 4. Further, I have added new, Leaflet-specific tasks to each item. You will need to look back to previous labs to find the relevant context for each task. Create the maps as specified, then answer the questions at the end.
+Each `add*()` call adds a new layer or control to the map object. The `%>%` pipe passes the map forward. This means you can build up a map incrementally, verify each piece, and compose them together — exactly as you did in `tmap`.
 
+Key resources:
+- Official leaflet for R docs: https://rstudio.github.io/leaflet/
+- Making maps with R (Hahn, Ch. 5): https://bookdown.org/nicohahn/making_maps_with_r5/docs/leaflet.html
+- `leaflet.providers` for basemap tile options
 
-### Task 1. From lab 2, task 2.3:
+```{r packages, echo=TRUE, message=TRUE}
+library(sf)
+library(leaflet)
+library(tidyverse)
+library(spdep)   # needed for Task 2 (Moran/LISA)
+```
 
-*Original task to be recreated using Leaflet:* Make a map of the counties, shading each county by the total cost of BMPs funded/implemented in that county. This will required you to join multiple datasets together
+*Note: You may need additional packages depending on your Task 3 choices. Load them here.*
 
-*Leaflet/other extras to add:*
+---
 
-- Mouse-over label the displays the total cost of BMPs funded in that county
+## Task 1: Choropleth from Lab 2
 
-- Use an equal-interval classification method with 5 classes. Determine the breaks programmatically.
+*Reference: leaflet docs — `addPolygons()`, `colorBin()`, `addLegend()`*
 
-- Do NOT use the default color scheme
+In Lab 2, Task 2.3, you created a choropleth of Ohio counties shaded by the total cost of BMPs funded/implemented in each county. Here you will recreate that map in Leaflet.
 
-### Task 2. From lab 3, task Bonus #2:
+### 1.1 — Reload and prepare the data
 
-*Original task to be recreated using Leaflet:* plot a choropleth map of your dataset with a categorical color scheme, where the shading corresponds to the Moran plot (really, “LISA”) quadrants. Thus, your map will have four shades of color.
+Go back to your Lab 2 code and reload the county geometry and BMP cost data. Perform whatever join and preprocessing was necessary to produce your choropleth variable. Store the result as an `sf` object called `counties_bmp`.
 
-*Leaflet/other extras to add:*
+Before mapping, **check and set the CRS**. Leaflet requires geographic coordinates (WGS 84, EPSG 4326). If your data are in a projected CRS, reproject now using `sf::st_transform(counties_bmp, 4326)`.
 
-- Add a pop-up window that displays the p-value (you'll have to look at the `moran.plot()` documentation) when you click on that county with a mouse
+```{r task1_data, echo=TRUE, message=TRUE}
+# your code here
+```
 
-- Add a control to change between 3 different basemaps
+### 1.2 — Define a color palette
 
+Leaflet's `colorBin()` function creates a color palette from a set of breaks. You must determine the **equal-interval breaks programmatically** — do not hard-code them.
 
-### Task 3: From lab 4, task 2:
+*Hint: The range of the variable divided by the number of classes gives you the interval width. `seq()` can generate your break points.*
 
-*Original task to be recreated using Leaflet:* Make a second  map of your choosing. You may choose any spatial extent, domain, or technique. I'm looking for creativity, good coding practices (including comments), and for you to demonstrate independent thinking. There are minor restrictions you must follow:
+```{r task1_palette, echo=TRUE, message=TRUE}
+# define breaks and palette here
+# example structure:
+# breaks <- seq(min(...), max(...), length.out = 6)  # 5 classes = 6 break points
+# pal <- colorBin(palette = "...", domain = ..., bins = breaks)
+```
 
-1. It must include vector AND raster data in some manner
-    
-2. It must include spatial data relating to a social process (e.g., political boundaries) AND spatial data relating to an environmental process (e.g., water resources)
-    
-3. The map should "stand on its own" and communicate its purpose without additional text
-    
-4. That's it!
+*Requirement: Do NOT use the default color scheme (Blues). Choose a palette appropriate for sequential data from a source like ColorBrewer.*
 
-*Leaflet/other extras to add:*
+### 1.3 — Build the choropleth map
 
-- Add a control that turns on/off each layer
+Build the Leaflet map with the following requirements:
 
-- Since everyone's maps are different, I can't specify exactly what else you should add. But, find one thing cool, interesting, or applicable to YOUR map, and implement it.
+- The county polygons colored by total BMP cost using your `colorBin()` palette
+- A **mouse-over label** that displays the county name and total cost when the cursor hovers over a county. Use the `label` argument in `addPolygons()`.
+- A **legend** using `addLegend()`
+- A basemap tile layer using `addProviderTiles()` — choose something other than the default OpenStreetMap. Browse options at https://leaflet-extras.github.io/leaflet-providers/preview/
 
+```{r task1_map, echo=TRUE, message=TRUE}
+# your code here
+```
 
-## **Questions:**
+**Reflection question 1 (answer in your repo):** In `tmap`, classification method choices (jenks, quantile, etc.) are made when you call `tm_polygons()`. In Leaflet, you define the palette and breaks separately using `colorBin()`, `colorQuantile()`, or `colorNumeric()`. What are the trade-offs of this approach? Does separating the palette from the geometry layer give you more or less flexibility? Give a specific example.
 
-1. Reflect on the labs from this semester. What did you learn? What did you like? What did you not like?
+---
 
-2. Describe the "one thing" you chose to add to your map in Task 3 above. What did you do, and why is it applicable to your map?
+## Task 2: LISA map from Lab 3
+
+*Reference: leaflet docs — `addPolygons()` popup, `addLayersControl()`, `addProviderTiles()`*
+
+In Lab 3, Bonus Task 2, you produced a choropleth map of LISA (local Moran's I) quadrants — a categorical four-class map showing spatial clustering patterns (HH, HL, LH, LL). Here you will recreate that map in Leaflet with interactive enhancements.
+
+### 2.1 — Reload and prepare the data
+
+Go back to your Lab 3 code. Reload the spatial data and rerun the Moran/LISA analysis to recover the quadrant assignments and p-values. Store the result as an `sf` object called `counties_lisa`, reprojected to WGS 84 (EPSG 4326).
+
+*Note: You need both the quadrant labels and the p-values — make sure both are columns in `counties_lisa` before proceeding.*
+
+```{r task2_data, echo=TRUE, message=TRUE}
+# your code here
+```
+
+### 2.2 — Define a categorical color palette
+
+LISA quadrants are a categorical variable (four classes). Use `colorFactor()` instead of `colorBin()`. Assign a distinct, meaningful color to each quadrant (HH, HL, LH, LL). A common convention is warm colors for High clusters and cool colors for Low clusters.
+
+```{r task2_palette, echo=TRUE, message=TRUE}
+# your code here
+# example structure:
+# pal_lisa <- colorFactor(palette = c(...), levels = c("HH", "HL", "LH", "LL"))
+```
+
+### 2.3 — Build the LISA map
+
+Build the Leaflet map with the following requirements:
+
+- County polygons colored by LISA quadrant using your `colorFactor()` palette
+- A **pop-up window** (not a hover label) that displays the p-value for that county when clicked. Use the `popup` argument in `addPolygons()`. Format the p-value to a reasonable number of decimal places.
+- A **basemap switcher** that allows the user to toggle between **3 different basemaps**. Use `addProviderTiles()` with `group` arguments and `addLayersControl()` with `baseGroups`.
+- A legend
+
+```{r task2_map, echo=TRUE, message=TRUE}
+# your code here
+```
+
+*Tip: The `addLayersControl()` function accepts `baseGroups` (radio buttons, one active at a time) and `overlayGroups` (checkboxes, multiple can be active). Basemaps should be `baseGroups`.*
+
+**Reflection question 2 (answer in your repo):** Compare the static LISA map you made in Lab 3 to this interactive version. What does interactivity add? Are there things the static map communicates more clearly? Consider map reading purpose (exploration vs. communication) in your answer.
+
+---
+
+## Task 3: Free-form map from Lab 4
+
+*Reference: leaflet docs — `addLayersControl()` with overlayGroups, your choice of other features*
+
+In Lab 4, Task 2 (and echoed in Lab 5, Task 5), you created an original map combining vector and raster data, representing both a social and an environmental process. Here you will recreate that concept in Leaflet.
+
+*Note: Leaflet handles raster data differently than `tmap`. The `addRasterImage()` function in the `leaflet` package can display projected rasters, but requires the `raster` package (not `terra`) or conversion. An alternative is to represent the "environmental process" through a different vector layer (e.g., watersheds, land cover categories as polygons) if raster integration proves difficult. Document your approach in a comment.*
+
+### 3.1 — Reload and prepare your data
+
+Reload the data you used in your original free-form map. Reproject all layers to WGS 84 (EPSG 4326). List the layers you are using in a comment.
+
+```{r task3_data, echo=TRUE, message=TRUE}
+# your code here
+# layers I'm using:
+#  - [social layer]: ...
+#  - [environmental layer]: ...
+```
+
+### 3.2 — Build the interactive map
+
+Build the Leaflet map with the following requirements:
+
+- At least **two distinct data layers** (one social, one environmental)
+- A **layer toggle control** (`addLayersControl()` with `overlayGroups`) that lets the user turn each layer on or off independently
+- At least **one additional interactive feature** of your choosing that is meaningful for YOUR specific map. Options include (but are not limited to):
+  - Popups with attribute data
+  - Hover labels
+  - A minimap (`addMiniMap()` from `leaflet.extras`)
+  - Marker clustering
+  - A scale bar (`addScaleBar()`)
+  - Highlighting on hover (`highlight` argument in `addPolygons()`)
+- A legend for at least one layer
+
+Document your "one thing" choice in a comment explaining what it is and why it fits your map.
+
+```{r task3_map, echo=TRUE, message=TRUE}
+# your code here
+
+# My "one thing": [describe what you added and why it's applicable]
+```
+
+**Reflection question 3 (answer in your repo):** Describe the one extra feature you added and justify why it is meaningful for your specific map — not just technically interesting, but cartographically or analytically useful for the story you are trying to tell.
+
+---
+
+## Questions
+
+1. Reflect on the labs from this semester. What did you learn? What did you like? What did you not like? (Be specific — vague answers will receive partial credit.)
+
+2. In this lab, all three tasks involved taking existing analysis and presenting it interactively. What does Leaflet add beyond what `tmap` could do? And conversely, what did you give up by switching to Leaflet? Consider both technical and cartographic dimensions.
+
+3. Describe the "one thing" you chose to add to your map in Task 3. What did you implement, why is it applicable to your specific map, and how does it change the user's experience compared to a static version?
+
+---
+
+## Bonus (+20 points)
+
+Extend your Task 2 LISA map to include a **synchronized side-by-side view**: the LISA quadrant map on one side and the underlying variable choropleth (from Task 1 or your Lab 3 variable) on the other. The `leafsync` package provides `sync()` for this purpose.
+
+The two maps should share the same extent and zoom level. When you pan or zoom one, the other follows. Add a brief comment explaining what analytical value this comparison provides.
+
+```{r bonus, echo=TRUE, message=TRUE}
+# your code here
+```

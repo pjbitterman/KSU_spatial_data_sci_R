@@ -1,7 +1,7 @@
 ---
 title: "in-class dynamic mapping"
 author: "Patrick Bitterman"
-date: "2025-04-10"
+date: "2026-04-07"
 output: html_document
 ---
 
@@ -255,6 +255,18 @@ m.both
 - Dam layer should be shaded by the year it was removed
 - Add controls to turn individual layers on and off
 
-#### Extra challenges: 
+#### Extra challenges:
 1. Use a custom icon for the dam layer
 2. Add a control to the interface to change the base map
+
+
+### GROUP 3
+
+- Using the Ohio county data and a variable of your choice from the BMP or demographic datasets, compute local Moran's I (LISA) quadrant assignments
+- Make a choropleth map shaded by LISA quadrant (HH, HL, LH, LL) using a meaningful four-color palette
+- When the user clicks a county, a pop-up should display the county name and the local Moran p-value
+- Add a legend
+
+#### Extra challenges:
+1. Add a layer toggle control so the user can switch between the LISA quadrant map and the underlying variable choropleth
+2. Add a `setView()` call with a reasonable default zoom centered on Ohio
