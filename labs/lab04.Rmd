@@ -240,7 +240,7 @@ Map both results.
 
 ### 4.1 — Load all boundary files
 
-Use `list.files()` to get all `.shp` files from the `bounds/` directory. Load each with `sf::read_sf()`, then combine them into a single sf object using `dplyr::bind_rows()`. Make sure each polygon has an identifier — if not, add a column with the filename or AOI name.
+Use `fs::dir_ls()` with the parameter `regexp = "\\.shp$"` to get all `.shp` files from the `bounds/` directory. Load each with `sf::read_sf()`, then combine them into a single sf object using `dplyr::bind_rows()`. Make sure each polygon has an identifier — if not, add a column with the filename or AOI name.
 
 ```{r load_all_aois, echo=TRUE, message=TRUE}
 # your code here
