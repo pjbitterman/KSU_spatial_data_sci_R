@@ -185,9 +185,9 @@ Create a `tmap` map of `sandusky_0816`. Your map should include:
 
 ### 3.1 Load and stack multiple rasters
 
-Load and clean **at least four** of the seven rasters (choose dates that span a meaningful time range). Apply `clean_cicyano()` and `dn_to_ci()` to each. Then combine them into a single multi-layer SpatRaster using `c()`.
+Load and clean **at least four** of the seven rasters (choose dates that span a meaningful time range). Apply `clean_cicyano()` and `dn_to_ci()` to each. Then combine them into a single multi-layer SpatRaster using `terra::rast()`.
 
-*Tip: using `purrr::map()` over your `raster_files` vector, combined with your preprocessing functions, can make this more efficient.*
+*Tip: using `purrr::map()` over your `raster_files` vector, combined with your preprocessing functions, can make this more efficient. Pass the resulting list directly to `terra::rast()` to stack the layers.*
 
 ```{r stack_rasters, echo=TRUE, message=TRUE}
 # your code here
@@ -232,7 +232,7 @@ Map both results.
 
 **Q3.1** What are the limitations of using **mean CI value** as a measure of bloom severity across the whole lake? What would be a more robust alternative metric?
 
-**Q3.2** Stacking rasters with `c()` in terra creates a multi-layer SpatRaster. What requirement must all rasters meet in order to be stacked this way? (Think: extent, resolution, CRS.)
+**Q3.2** Stacking rasters with `terra::rast()` creates a multi-layer SpatRaster. What requirement must all rasters meet in order to be stacked this way? (Think: extent, resolution, CRS.)
 
 ---
 
