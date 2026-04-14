@@ -30,11 +30,16 @@ Leaflet is....
 
 Wait, that's a LOT of jargon. Can we add some clarity?
 
+- **JavaScript**: programming language that runs inside web browsers. It powers interactive behavior on almost every website you use
+- **Library**: collection of pre-written code that solves a specific problem. Leaflet is a JS library built specifically for interactive maps — someone else wrote the hard parts, and we use the result
+- **API (Application Programming Interface)**:  set of functions and rules that lets one piece of software talk to another. Leaflet's API is the list of commands you can give it: "add a tile layer," "add a marker," etc.
+- **Access in R**: the `leaflet` R package is a *wrapper*: it translates your R code into JavaScript instructions that Leaflet understands, so you never have to write JavaScript yourself.
+
 ```{r}
 
 ```
 
-## Features
+## Features of Leaflet
 - Interactive panning/zooming
 - Compose maps using arbitrary combinations of:
     - Map tiles
@@ -195,7 +200,7 @@ Give it a shot. What do you like?
 ## Let's use some of our data
 
 ```{r}
-parks <- sf::read_sf("../data/static_mapping/oh_parks.gpkg") %>%
+parks <- sf::read_sf("./data/static_mapping/oh_parks.gpkg") %>%
   sf::st_transform(., "EPSG:4326") # transform to WGS84 to make Leaflet happy
 
 # set up the map, zoom out a bit
@@ -235,7 +240,7 @@ What happened?
 (Note, there's a difference here in calling various datasets)
 
 ```{r}
-m.both <- leaflet() %>%
+m.both <- leaflet() %>% # not using the dataset as a parameter here - why not???
   setView(lng = -81.34, lat = 41.145, zoom = 10) %>% 
   addProviderTiles(providers$Esri.NatGeoWorldMap) %>%
   addPolygons(data = parks, popup = ~NAME, label = ~NAME, color = "green") %>%
