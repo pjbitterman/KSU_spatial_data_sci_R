@@ -52,6 +52,34 @@ Wait, that's a LOT of jargon. Can we add some clarity?
 - Display maps in non spherical mercator projections
 - Augment map features using chosen plugins from leaflet plugins repository
 
+# A quick detour: Functional vs. Object-Oriented Programming
+
+Before we dive into examples, notice *how* Leaflet is written in R, as it reveals something important about programming paradigms.
+
+**Object-Oriented Programming (OOP)** organizes code around *objects* that bundle data and behavior together. You call methods on an object, which often mutates its state. The underlying JavaScript Leaflet library is OOP:
+
+```javascript
+// JavaScript (OOP style)
+var map = L.map('mapid');        // create an object
+map.setView([41.15, -81.35], 14); // call a method on it — mutates the object
+L.tileLayer('https://...').addTo(map); // another object added to the map
+```
+
+**Functional Programming (FP)** organizes code around *functions* that take inputs and return outputs — no hidden state changes. You compose functions together, passing the result of one as input to the next. The R leaflet package expresses the same idea in a functional style:
+
+```r
+# R (functional style)
+leaflet() %>%        # function returns a map object
+  setView(...) %>%   # function takes that object, returns a new one
+  addTiles()         # function takes that, returns a new one
+```
+
+Each `%>%` step is a function call. Nothing is mutated — each call produces a new value. This is the same philosophy as `dplyr`: `filter() %>% select() %>% mutate()`.
+
+**Key insight:** The R leaflet package wraps an OOP JavaScript library in a functional R interface. You build maps by composing functions, but the *result* is an object (you'll see an example later when we use `$` to inspect it).
+
+---
+
 # Demonstration
 
 A simple setup
@@ -125,6 +153,10 @@ m2$x
 
 What do the data look like?
 
+> **OOP note:** Even though we *built* `m2` by composing functions (`leaflet() %>% addTiles()`), the result is an R object (an S3 list) with named properties. The `$` operator is how you access those properties, and it's the same way you'd access fields on an object in OOP. So we construct using functional paradigms, but get an OOP result.
+
+
+## Back to the show
 
 Let's try again to visualize it. Again, break down the code first
 
@@ -217,7 +249,7 @@ m.both
 
 # Let's practice
 
-- Add the municipal boundaries in Portage and Summit counties to this map
+- Add the municipal boundaries in Portage and Summit counties to this map (recall how we made our "study area" last week - you'll have to reuse last week's data)
 - Give them a "popup" corresponding to their name
 - And give the parks a color based on the TYPE of park.
 
@@ -262,7 +294,7 @@ m.both
 
 ### GROUP 3
 
-- Using the Ohio county data and a variable of your choice from the BMP or demographic datasets, compute local Moran's I (LISA) quadrant assignments
+- Using the Ohio county data and a variable of your choice from the BMP or demographic datasets, compute local Moran's I (LISA) quadrant assignments (you may need to review the activities from that week)
 - Make a choropleth map shaded by LISA quadrant (HH, HL, LH, LL) using a meaningful four-color palette
 - When the user clicks a county, a pop-up should display the county name and the local Moran p-value
 - Add a legend
