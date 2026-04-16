@@ -287,7 +287,7 @@ For question 3, we can extract the ACF values directly and look at the seasonal 
 flow_monthly %>%
   feasts::ACF(mean_flow, lag_max = 36) %>%
   as_tibble() %>%
-  filter(lag %in% c(1, 12, 24, 36))
+  filter(as.numeric(lag) %in% c(1, 12, 24, 36))
 ```
 
 The strong positive values at lags 12, 24, and 36 confirm annual seasonality: this month's flow is similar to the same month one, two, and three years ago. At lag 1, the positive correlation means high-flow months tend to follow high-flow months — the river has inertia, it doesn't jump randomly month to month.
