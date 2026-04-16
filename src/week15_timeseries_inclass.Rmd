@@ -50,6 +50,8 @@ Think of it like: *data = trend + seasonality + remainder*
 
 Before we look at any data: if you were measuring streamflow on a river in Northeast Ohio, what kind of trend and seasonal pattern would you expect? Why?
 
+> **Likely answers:** For seasonality, expect high flows in late winter and spring (snowmelt + spring rainfall in March–May) and low flows in late summer (August–September, when evapotranspiration is high and precipitation is more sporadic). For trend, it's genuinely hard to predict without looking — flows might be increasing due to more intense precipitation events, decreasing due to water withdrawals or land-use change, or roughly flat. This is a good reminder that intuition should always be checked against data.
+
 ---
 
 # Getting data: USGS streamflow
@@ -67,10 +69,13 @@ raw_flow <- dataRetrieval::readNWISdv(
   endDate     = "2023-12-31"
 )
 
+
 head(raw_flow)
 ```
 
 **Question**: What variables do you see? What do you think `X_00060_00003` means? What about the `_cd` column?
+
+> **Answer:** The column name `X_00060_00003` encodes the USGS parameter code (`00060` = discharge in cfs) and statistic code (`00003` = daily mean). USGS uses these numeric codes for everything in their system. The `_cd` column is a data-quality flag: `"A"` means the value has been reviewed and approved, `"P"` means provisional (still subject to revision). For most analyses, approved data is preferable.
 
 ```{r}
 # The package has a helper to rename columns to something readable
@@ -90,6 +95,8 @@ nrow(flow_clean)
 
 **Question**: Is that about what you'd expect for daily data from 2000–2023? Do the math.
 
+> **Answer:** 24 years × 365.25 days/year ≈ 8,766 days. So we'd expect somewhere around 8,700–8,800 rows. Any shortfall is likely missing data (equipment outages, ice affecting the sensor, etc.). A quick check: `sum(is.na(flow_clean$Flow))` would tell you how many NA values were dropped.
+
 ---
 
 # The `tsibble`: a tidy time series object
@@ -104,6 +111,8 @@ flow_ts
 ```
 
 **Question**: What does tsibble report for the interval? Does that match what we pulled?
+
+> **Answer:** It should report `[1D]` — a one-day interval. Yes, that matches: we pulled daily values from USGS. Tsibble infers the interval automatically from the spacing of the index column. If you had gaps in the data, it might report an irregular interval or error out, which is actually useful — it forces you to confront missing data explicitly rather than silently ignoring it.
 
 ---
 
@@ -122,6 +131,8 @@ flow_ts %>%
 ```
 
 What do you notice? Any obvious trend? Seasonality? Large spikes?
+
+> **Answer:** The daily plot is noisy, but a few things stand out. There are large upward spikes — these are flood events where discharge briefly surges. There's a vague seasonal rhythm (peaks clustering in certain parts of the year), but it's hard to characterize precisely because the noise drowns it out. A long-term trend, if present, is essentially invisible at this scale. This is exactly why we'll aggregate to monthly — not to throw away information, but to make the signal easier to see.
 
 ## Aggregate to monthly
 
@@ -149,6 +160,8 @@ flow_monthly %>%
 
 How does this compare to the daily plot? What's easier or harder to see at monthly resolution?
 
+> **Answer:** The seasonal pattern is much clearer now — you can see the regular annual peaks and troughs without them being buried in day-to-day variability. The trade-off is that individual flood events are averaged away; a major flood that lasted three days gets absorbed into a monthly mean. For understanding long-term patterns (seasonality, trend), monthly aggregation is a good choice. If you cared about flood frequency or magnitude, you'd stay with daily data.
+
 ## Seasonal plot
 
 This plots each year as its own line, all aligned on the same x-axis (month of year).
@@ -164,9 +177,15 @@ flow_monthly %>%
 
 **Questions**:
 
-1. Which months consistently have the highest flow? Lowest?
+1. Which months consistently have the highest flow? Lowest? Can you tell?
 2. How consistent is the seasonal pattern across years?
 3. Can you identify any years that look unusual? What might explain them?
+
+> **Answers:**
+>
+> 1. March and April tend to have the highest flows (snowmelt + spring storms). August and September tend to have the lowest (high evapotranspiration, irregular summer rainfall). The pattern should be visible as lines bunching together at the top and bottom of those months.
+> 2. Reasonably consistent in shape — the peak is almost always spring and the trough almost always late summer — but the magnitude varies a lot year to year. Some years are much wetter or drier overall.
+> 3. Years with unusually high peaks likely correspond to notable flood years. Years sitting clearly below the rest across all months may reflect regional drought conditions. If a specific line looks out of place, that's worth investigating with external records (NOAA precipitation data, news archives, etc.).
 
 ## Subseries plot
 
@@ -182,6 +201,8 @@ flow_monthly %>%
 ```
 
 The blue horizontal line in each panel is the mean for that month. What does this view tell you that the seasonal plot didn't?
+
+> **Answer:** The subseries plot separates the "within-year" seasonal pattern from the "across-year" trend within each month. Look at whether the individual year values in, say, the March panel are trending upward or downward over time — that would suggest March flows specifically are changing. The seasonal plot shows the annual shape clearly but makes it hard to ask "is October getting wetter over the decades?" The subseries plot answers exactly that question, one month at a time.
 
 ## Autocorrelation
 
@@ -199,6 +220,12 @@ flow_monthly %>%
 1. What do the blue dashed lines represent?
 2. At lag 1 the correlation is strongly positive — what does that mean in plain language?
 3. What pattern do you see at lags 12, 24, 36? Why does that make sense given the data?
+
+> **Answers:**
+>
+> 1. The blue dashed lines are significance thresholds (approximately ±2/√n). Bars extending beyond these lines represent autocorrelations that are statistically distinguishable from zero — i.e., not just noise.
+> 2. A strong positive correlation at lag 1 means: knowing this month's flow tells you a lot about next month's flow. High-flow months tend to be followed by high-flow months; low-flow months tend to follow low-flow months. The river doesn't jump randomly — it has inertia. This is the autocorrelation that makes time series analysis fundamentally different from cross-sectional statistics.
+> 3. At lags 12, 24, and 36 there should be clear positive peaks. This is the signature of annual seasonality: a given month's flow is similar to the same month last year, two years ago, three years ago. The repeating 12-month pattern shows up as repeating peaks in the ACF. If your data had weekly seasonality, you'd see peaks at lags 52, 104, etc.
 
 ---
 
@@ -232,6 +259,13 @@ Look at each panel:
 3. The grey bars on the right side of each panel are deliberately the same height — what is their purpose?
 4. What might explain large spikes in the remainder component?
 
+> **Answers:**
+>
+> 1. Look at the **trend** panel. The trend line shows the long-term direction after seasonal effects are removed. There may be a subtle upward trend over recent decades, possibly reflecting increased precipitation intensity from climate change — but this varies. The key is to look at the *trend panel*, not the raw data panel, because the raw data is dominated by seasonality.
+> 2. Compare the y-axis ranges across panels. The **season_year** panel often has a larger range than the **trend** panel, meaning seasonal variation accounts for more of the total variation in flow than the long-term trend does. In other words: knowing what month it is explains more about flow than knowing what year it is.
+> 3. The grey bars are a visual scale reference. Since all bars are the same physical height on the plot but span different y-axis ranges, a panel with a large range (and small bar relative to the data variation) is showing a lot of variation — and vice versa. They let you compare the *magnitude* of each component directly, even though the panels have different y-axis scales.
+> 4. Remainder spikes represent variation not explained by the trend or seasonal pattern. Common causes: major floods or droughts (weather extremes), dam releases or diversions, instrument failures (a sensor spike that looks like a flood), or unusual climate events like an exceptionally wet winter.
+
 ---
 
 # A simple model and forecast
@@ -253,6 +287,12 @@ tidy(fit)
 2. There are seasonal coefficients — how would you interpret the one for `season()year2` (February)?
 3. The model has a reference category for season — which month is it, and how can you tell?
 
+> **Answers:**
+>
+> 1. The `trend()` coefficient is the estimated average change in mean monthly streamflow per month (in cfs/month). If it's, say, `0.8`, that means flow increases by about 0.8 cfs on average each month after accounting for seasonality — or about 9.6 cfs per year. Small relative to the seasonal swings, but potentially meaningful over decades.
+> 2. The `season()year2` coefficient for February represents the *difference* between February's expected flow and January's expected flow (the reference month), holding the trend constant. If the coefficient is positive, February tends to run higher than January. If negative, February tends to run lower. All seasonal coefficients are interpreted relative to the baseline month.
+> 3. January (year1) is the reference category — it's the month with no explicit coefficient, absorbed into the intercept. You can tell because the output starts at `season()year2` (February). In dummy-variable regression, one category is always left out as the baseline that everything else is compared against.
+
 ## Model fit: observed vs. fitted
 
 ```{r}
@@ -271,6 +311,8 @@ fit %>%
 ```
 
 Where does the model fit well? Where does it struggle? What does that tell you about the model's assumptions?
+
+> **Answer:** The model tends to fit well during "average" years — when flow follows the typical seasonal pattern at typical magnitudes. It struggles during extreme events: major floods will show large positive residuals (the model predicted something typical, actual flow was much higher), and drought years will show large negative residuals. This reveals a key assumption of TSLM: it assumes the trend is linear and the seasonal pattern has constant shape and magnitude year-to-year. Reality is messier. The gaps between observed and fitted lines are exactly the "remainder" we saw in the STL decomposition.
 
 ## Forecast
 
@@ -294,6 +336,12 @@ The shaded bands are **prediction intervals** (80% and 95%).
 1. Does the forecast look reasonable? Does it match your intuition from the seasonal plot?
 2. What does the *width* of the prediction intervals tell you?
 3. What important things does this model NOT account for? What are its real-world limitations?
+
+> **Answers:**
+>
+> 1. It should look reasonable — the forecast will show the same seasonal shape (spring peak, summer trough) with a slight trend, which matches what we'd expect based on the historical pattern. A sanity check: does the forecast magnitude look similar to recent historical values? If the forecast is way higher or lower, something is off.
+> 2. The width of the prediction intervals represents uncertainty. Wider intervals = less confident prediction. Notice that the 95% interval (lighter shading) is always wider than the 80% interval (darker shading). Also notice the intervals widen as you forecast further into the future — uncertainty accumulates over time. A very wide interval isn't a failure; it's an honest statement about how much we don't know.
+> 3. Key limitations: (a) The model assumes the future will look structurally like the past — same trend slope, same seasonal shape. If climate is changing or land use is shifting, this may not hold. (b) It can't predict extreme events (floods, droughts) because those are, by definition, departures from the average pattern. (c) It ignores upstream influences: dam operations, diversions, new development. (d) The trend is assumed to be perfectly linear forever, which is rarely realistic over long horizons.
 
 ---
 
