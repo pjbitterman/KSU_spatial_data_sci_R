@@ -75,7 +75,13 @@ head(raw_flow)
 
 **Question**: What variables do you see? What do you think `X_00060_00003` means? What about the `_cd` column?
 
-> **Answer:** The column name `X_00060_00003` encodes the USGS parameter code (`00060` = discharge in cfs) and statistic code (`00003` = daily mean). USGS uses these numeric codes for everything in their system. The `_cd` column is a data-quality flag: `"A"` means the value has been reviewed and approved, `"P"` means provisional (still subject to revision). For most analyses, approved data is preferable.
+The column name encodes USGS codes: `00060` = discharge parameter, `00003` = daily mean statistic. The `_cd` column is a data-quality flag. Let's look at what values it actually contains:
+
+```{r}
+raw_flow %>% count(X_00060_00003_cd)
+```
+
+`"A"` = approved (reviewed), `"P"` = provisional (subject to revision). For long-term analysis, approved data is preferable.
 
 ```{r}
 # The package has a helper to rename columns to something readable
@@ -95,7 +101,19 @@ nrow(flow_clean)
 
 **Question**: Is that about what you'd expect for daily data from 2000–2023? Do the math.
 
-> **Answer:** 24 years × 365.25 days/year ≈ 8,766 days. So we'd expect somewhere around 8,700–8,800 rows. Any shortfall is likely missing data (equipment outages, ice affecting the sensor, etc.). A quick check: `sum(is.na(flow_clean$Flow))` would tell you how many NA values were dropped.
+```{r}
+# expected days in our date range
+expected_days <- as.numeric(as.Date("2023-12-31") - as.Date("2000-01-01")) + 1
+expected_days
+
+# how does that compare to what we actually have?
+nrow(flow_clean)
+
+# how many NAs were dropped during cleaning?
+raw_flow %>% dataRetrieval::renameNWISColumns() %>% pull(Flow) %>% is.na() %>% sum()
+```
+
+Any shortfall between expected and actual is missing data — equipment outages, ice affecting the sensor, etc.
 
 ---
 
@@ -110,9 +128,7 @@ flow_ts <- flow_clean %>%
 flow_ts
 ```
 
-**Question**: What does tsibble report for the interval? Does that match what we pulled?
-
-> **Answer:** It should report `[1D]` — a one-day interval. Yes, that matches: we pulled daily values from USGS. Tsibble infers the interval automatically from the spacing of the index column. If you had gaps in the data, it might report an irregular interval or error out, which is actually useful — it forces you to confront missing data explicitly rather than silently ignoring it.
+The header line of the output above shows the interval tsibble detected — look for `[1D]`. Yes, that matches: we pulled daily values. Tsibble infers the interval automatically from the spacing of the index. If you had gaps, it would error out rather than silently skip them — which is actually useful.
 
 ---
 
@@ -132,7 +148,7 @@ flow_ts %>%
 
 What do you notice? Any obvious trend? Seasonality? Large spikes?
 
-> **Answer:** The daily plot is noisy, but a few things stand out. There are large upward spikes — these are flood events where discharge briefly surges. There's a vague seasonal rhythm (peaks clustering in certain parts of the year), but it's hard to characterize precisely because the noise drowns it out. A long-term trend, if present, is essentially invisible at this scale. This is exactly why we'll aggregate to monthly — not to throw away information, but to make the signal easier to see.
+The large upward spikes are flood events. There's a seasonal rhythm, but it's hard to characterize precisely at daily resolution — the noise drowns it out. A long-term trend, if present, is essentially invisible here. We'll aggregate to monthly to make the signal easier to see.
 
 ## Aggregate to monthly
 
@@ -160,7 +176,7 @@ flow_monthly %>%
 
 How does this compare to the daily plot? What's easier or harder to see at monthly resolution?
 
-> **Answer:** The seasonal pattern is much clearer now — you can see the regular annual peaks and troughs without them being buried in day-to-day variability. The trade-off is that individual flood events are averaged away; a major flood that lasted three days gets absorbed into a monthly mean. For understanding long-term patterns (seasonality, trend), monthly aggregation is a good choice. If you cared about flood frequency or magnitude, you'd stay with daily data.
+The seasonal pattern is much clearer — regular annual peaks and troughs are no longer buried in noise. The trade-off: individual flood events are averaged away. For understanding long-term structure (seasonality, trend), monthly is appropriate. For flood frequency or magnitude, you'd stay with daily.
 
 ## Seasonal plot
 
@@ -181,11 +197,29 @@ flow_monthly %>%
 2. How consistent is the seasonal pattern across years?
 3. Can you identify any years that look unusual? What might explain them?
 
-> **Answers:**
->
-> 1. March and April tend to have the highest flows (snowmelt + spring storms). August and September tend to have the lowest (high evapotranspiration, irregular summer rainfall). The pattern should be visible as lines bunching together at the top and bottom of those months.
-> 2. Reasonably consistent in shape — the peak is almost always spring and the trough almost always late summer — but the magnitude varies a lot year to year. Some years are much wetter or drier overall.
-> 3. Years with unusually high peaks likely correspond to notable flood years. Years sitting clearly below the rest across all months may reflect regional drought conditions. If a specific line looks out of place, that's worth investigating with external records (NOAA precipitation data, news archives, etc.).
+For question 1, let's compute this directly instead of just eyeballing:
+
+```{r}
+flow_monthly %>%
+  as_tibble() %>%
+  mutate(month = lubridate::month(ym, label = TRUE)) %>%
+  group_by(month) %>%
+  summarise(avg_flow = mean(mean_flow, na.rm = TRUE)) %>%
+  arrange(desc(avg_flow))
+```
+
+For question 3, which individual years had the highest and lowest *annual* mean flow?
+
+```{r}
+flow_monthly %>%
+  as_tibble() %>%
+  mutate(year = lubridate::year(ym)) %>%
+  group_by(year) %>%
+  summarise(annual_mean = mean(mean_flow, na.rm = TRUE)) %>%
+  arrange(desc(annual_mean))
+```
+
+Years at the top and bottom of this table are the ones that stand out as lines in the seasonal plot. The seasonal shape stays consistent year to year — the peak is almost always spring and the trough late summer — but the overall magnitude varies substantially.
 
 ## Subseries plot
 
@@ -202,7 +236,23 @@ flow_monthly %>%
 
 The blue horizontal line in each panel is the mean for that month. What does this view tell you that the seasonal plot didn't?
 
-> **Answer:** The subseries plot separates the "within-year" seasonal pattern from the "across-year" trend within each month. Look at whether the individual year values in, say, the March panel are trending upward or downward over time — that would suggest March flows specifically are changing. The seasonal plot shows the annual shape clearly but makes it hard to ask "is October getting wetter over the decades?" The subseries plot answers exactly that question, one month at a time.
+The subseries plot lets you ask: within a specific month, is flow changing over time? The seasonal plot shows the annual shape well but makes month-specific trends invisible. Here's one way to make that question explicit:
+
+```{r}
+# Is March flow trending over time?
+flow_monthly %>%
+  as_tibble() %>%
+  mutate(month = lubridate::month(ym),
+         year  = lubridate::year(ym)) %>%
+  filter(month == 3) %>%
+  ggplot(aes(x = year, y = mean_flow)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(title = "March Mean Streamflow Over Time",
+       y = "Mean Discharge (cfs)", x = "Year")
+```
+
+Try changing `month == 3` to another month. Does every month show the same direction of change?
 
 ## Autocorrelation
 
@@ -221,11 +271,26 @@ flow_monthly %>%
 2. At lag 1 the correlation is strongly positive — what does that mean in plain language?
 3. What pattern do you see at lags 12, 24, 36? Why does that make sense given the data?
 
-> **Answers:**
->
-> 1. The blue dashed lines are significance thresholds (approximately ±2/√n). Bars extending beyond these lines represent autocorrelations that are statistically distinguishable from zero — i.e., not just noise.
-> 2. A strong positive correlation at lag 1 means: knowing this month's flow tells you a lot about next month's flow. High-flow months tend to be followed by high-flow months; low-flow months tend to follow low-flow months. The river doesn't jump randomly — it has inertia. This is the autocorrelation that makes time series analysis fundamentally different from cross-sectional statistics.
-> 3. At lags 12, 24, and 36 there should be clear positive peaks. This is the signature of annual seasonality: a given month's flow is similar to the same month last year, two years ago, three years ago. The repeating 12-month pattern shows up as repeating peaks in the ACF. If your data had weekly seasonality, you'd see peaks at lags 52, 104, etc.
+For question 1, the threshold is approximately ±2/√n. Let's compute it:
+
+```{r}
+n_months <- nrow(flow_monthly)
+significance_threshold <- 2 / sqrt(n_months)
+significance_threshold
+```
+
+Bars extending beyond this value are statistically distinguishable from zero — not just noise.
+
+For question 3, we can extract the ACF values directly and look at the seasonal lags:
+
+```{r}
+flow_monthly %>%
+  feasts::ACF(mean_flow, lag_max = 36) %>%
+  as_tibble() %>%
+  filter(lag %in% c(1, 12, 24, 36))
+```
+
+The strong positive values at lags 12, 24, and 36 confirm annual seasonality: this month's flow is similar to the same month one, two, and three years ago. At lag 1, the positive correlation means high-flow months tend to follow high-flow months — the river has inertia, it doesn't jump randomly month to month.
 
 ---
 
@@ -259,12 +324,33 @@ Look at each panel:
 3. The grey bars on the right side of each panel are deliberately the same height — what is their purpose?
 4. What might explain large spikes in the remainder component?
 
-> **Answers:**
->
-> 1. Look at the **trend** panel. The trend line shows the long-term direction after seasonal effects are removed. There may be a subtle upward trend over recent decades, possibly reflecting increased precipitation intensity from climate change — but this varies. The key is to look at the *trend panel*, not the raw data panel, because the raw data is dominated by seasonality.
-> 2. Compare the y-axis ranges across panels. The **season_year** panel often has a larger range than the **trend** panel, meaning seasonal variation accounts for more of the total variation in flow than the long-term trend does. In other words: knowing what month it is explains more about flow than knowing what year it is.
-> 3. The grey bars are a visual scale reference. Since all bars are the same physical height on the plot but span different y-axis ranges, a panel with a large range (and small bar relative to the data variation) is showing a lot of variation — and vice versa. They let you compare the *magnitude* of each component directly, even though the panels have different y-axis scales.
-> 4. Remainder spikes represent variation not explained by the trend or seasonal pattern. Common causes: major floods or droughts (weather extremes), dam releases or diversions, instrument failures (a sensor spike that looks like a flood), or unusual climate events like an exceptionally wet winter.
+For questions 1 and 2, we can extract the decomposition components and compare their ranges directly:
+
+```{r}
+dcmp_components <- dcmp %>% fabletools::components()
+
+dcmp_components %>%
+  as_tibble() %>%
+  summarise(
+    trend_range    = diff(range(trend,       na.rm = TRUE)),
+    seasonal_range = diff(range(season_year, na.rm = TRUE)),
+    remainder_range= diff(range(remainder,   na.rm = TRUE))
+  )
+```
+
+Whichever range is largest dominates the variation in the series. In most river data, the seasonal range dwarfs the trend — knowing what month it is tells you more about flow than knowing what year it is.
+
+For question 4, which dates have the largest remainder values (biggest departures from trend + season)?
+
+```{r}
+dcmp_components %>%
+  as_tibble() %>%
+  select(ym, remainder) %>%
+  arrange(desc(abs(remainder))) %>%
+  head(10)
+```
+
+Look up those dates. They likely correspond to major flood events, drought years, or other unusual conditions. The grey bars in the decomposition plot serve as a visual scale reference: since all bars are the same physical height but span different y-axis ranges, you can visually compare how much variation each component actually accounts for.
 
 ---
 
@@ -287,11 +373,23 @@ tidy(fit)
 2. There are seasonal coefficients — how would you interpret the one for `season()year2` (February)?
 3. The model has a reference category for season — which month is it, and how can you tell?
 
-> **Answers:**
->
-> 1. The `trend()` coefficient is the estimated average change in mean monthly streamflow per month (in cfs/month). If it's, say, `0.8`, that means flow increases by about 0.8 cfs on average each month after accounting for seasonality — or about 9.6 cfs per year. Small relative to the seasonal swings, but potentially meaningful over decades.
-> 2. The `season()year2` coefficient for February represents the *difference* between February's expected flow and January's expected flow (the reference month), holding the trend constant. If the coefficient is positive, February tends to run higher than January. If negative, February tends to run lower. All seasonal coefficients are interpreted relative to the baseline month.
-> 3. January (year1) is the reference category — it's the month with no explicit coefficient, absorbed into the intercept. You can tell because the output starts at `season()year2` (February). In dummy-variable regression, one category is always left out as the baseline that everything else is compared against.
+```{r}
+# Pull the trend coefficient and express it as monthly and annual change
+trend_coef <- tidy(fit) %>% filter(term == "trend()")
+trend_coef
+
+# annual rate of change
+trend_coef$estimate * 12
+```
+
+The `trend()` coefficient is the estimated average change in mean monthly discharge (cfs) per month, after accounting for seasonality. Multiply by 12 for an annual rate.
+
+```{r}
+# The seasonal coefficients — all relative to the reference month
+tidy(fit) %>% filter(stringr::str_detect(term, "season"))
+```
+
+Notice the output starts at `season()year2` — that's February. January (`year1`) is absent because it's the **reference category**, absorbed into the intercept. Every seasonal coefficient is the expected difference between that month and January, holding the trend constant. A positive value means that month runs higher than January on average; negative means lower.
 
 ## Model fit: observed vs. fitted
 
@@ -312,7 +410,19 @@ fit %>%
 
 Where does the model fit well? Where does it struggle? What does that tell you about the model's assumptions?
 
-> **Answer:** The model tends to fit well during "average" years — when flow follows the typical seasonal pattern at typical magnitudes. It struggles during extreme events: major floods will show large positive residuals (the model predicted something typical, actual flow was much higher), and drought years will show large negative residuals. This reveals a key assumption of TSLM: it assumes the trend is linear and the seasonal pattern has constant shape and magnitude year-to-year. Reality is messier. The gaps between observed and fitted lines are exactly the "remainder" we saw in the STL decomposition.
+The residuals (observed − fitted) tell us exactly where the model is wrong. Large residuals = the model missed badly. Let's find the worst misses:
+
+```{r}
+fit %>%
+  fabletools::augment() %>%
+  as_tibble() %>%
+  mutate(abs_resid = abs(.resid)) %>%
+  arrange(desc(abs_resid)) %>%
+  select(ym, mean_flow, .fitted, .resid) %>%
+  head(10)
+```
+
+Large positive residuals (observed >> fitted) are typically flood months. Large negative residuals are drought months. The model only captures a linear trend and a fixed seasonal shape — it has no mechanism to anticipate extreme events, so those show up entirely in the residuals.
 
 ## Forecast
 
@@ -337,11 +447,21 @@ The shaded bands are **prediction intervals** (80% and 95%).
 2. What does the *width* of the prediction intervals tell you?
 3. What important things does this model NOT account for? What are its real-world limitations?
 
-> **Answers:**
->
-> 1. It should look reasonable — the forecast will show the same seasonal shape (spring peak, summer trough) with a slight trend, which matches what we'd expect based on the historical pattern. A sanity check: does the forecast magnitude look similar to recent historical values? If the forecast is way higher or lower, something is off.
-> 2. The width of the prediction intervals represents uncertainty. Wider intervals = less confident prediction. Notice that the 95% interval (lighter shading) is always wider than the 80% interval (darker shading). Also notice the intervals widen as you forecast further into the future — uncertainty accumulates over time. A very wide interval isn't a failure; it's an honest statement about how much we don't know.
-> 3. Key limitations: (a) The model assumes the future will look structurally like the past — same trend slope, same seasonal shape. If climate is changing or land use is shifting, this may not hold. (b) It can't predict extreme events (floods, droughts) because those are, by definition, departures from the average pattern. (c) It ignores upstream influences: dam operations, diversions, new development. (d) The trend is assumed to be perfectly linear forever, which is rarely realistic over long horizons.
+One sanity check for question 1 — compare the forecast values to the most recent observed values:
+
+```{r}
+# Last 12 months of observed data
+flow_monthly %>% tail(12)
+
+# First 12 months of the forecast
+fc %>% as_tibble() %>% select(ym, .mean) %>% head(12)
+```
+
+The forecast should produce magnitudes in a similar ballpark to recent observations and preserve the seasonal shape.
+
+For question 2: the prediction intervals widen as you forecast further into the future — uncertainty accumulates. A very wide interval isn't a model failure; it's an honest statement about how much we don't know. The 95% band is always wider than the 80% band by construction.
+
+For question 3: the TSLM assumes the trend is linear and the seasonal shape is fixed and identical year to year. It cannot anticipate floods, droughts, dam operations, or any structural change in the watershed. It also can't tell you *which* spring will flood — only that spring tends to be high on average.
 
 ---
 
