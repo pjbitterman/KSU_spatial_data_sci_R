@@ -472,6 +472,98 @@ For question 3: the TSLM assumes the trend is linear and the seasonal shape is f
 
 ---
 
+# A second model: ARIMA
+
+TSLM is intuitive but makes strong assumptions — a perfectly linear trend, a seasonal pattern with fixed shape and size. ARIMA is more flexible. It doesn't assume a specific functional form; instead it learns the structure of the series from the data itself.
+
+## What does ARIMA stand for?
+
+ARIMA = **A**uto**R**egressive **I**ntegrated **M**oving **A**verage. Each word describes one ingredient:
+
+- **AR — AutoRegressive**: The model predicts the next value using a weighted combination of *past values*. If last month's flow was high, the AR part says "expect this month's to be somewhat high too." The number of past values used is called *p*.
+
+- **I — Integrated**: Many real-world series have trends, which violates a key assumption (called *stationarity*) that ARIMA needs. The "I" fixes this by working with *differences* between consecutive observations (this month minus last month) rather than the raw values. The number of times you difference is called *d*.
+
+- **MA — Moving Average**: The model also adjusts predictions based on past *forecast errors* — how wrong was the model last time? If it over-predicted last month, it nudges down this month's forecast. The number of past errors used is called *q*.
+
+The full notation is **ARIMA(p, d, q)**. For seasonal data, there's also a seasonal component written as **ARIMA(p, d, q)(P, D, Q)[m]**, where the uppercase letters apply to lags at the seasonal period *m* (12 for monthly data).
+
+You do not need to pick p, d, q yourself. `fable::ARIMA()` selects them automatically by trying many combinations and choosing the one with the best information criterion (AICc).
+
+## Fitting an ARIMA model
+
+```{r}
+fit_arima <- flow_monthly %>%
+  fabletools::model(
+    arima = fable::ARIMA(mean_flow)
+  )
+```
+
+What order did it choose?
+
+```{r}
+report(fit_arima)
+```
+
+Read the model notation at the top of the output. For example, `ARIMA(1,1,1)(0,1,1)[12]` means:
+
+- Non-seasonal part: 1 AR term, differenced once, 1 MA term
+- Seasonal part: no seasonal AR, differenced once at lag 12, 1 seasonal MA term
+- Seasonal period: 12 months
+
+The exact order will vary — let the output tell you what it found.
+
+## ARIMA forecast
+
+```{r}
+fc_arima <- fit_arima %>%
+  fabletools::forecast(h = "2 years")
+
+fc_arima %>%
+  fabletools::autoplot(flow_monthly, level = c(80, 95)) +
+  labs(
+    title = "2-Year ARIMA Forecast — Monthly Mean Streamflow",
+    y     = "Mean Discharge (cfs)",
+    x     = NULL
+  )
+```
+
+## Comparing TSLM and ARIMA side by side
+
+We can fit both models in a single `model()` call and forecast them together:
+
+```{r}
+fit_both <- flow_monthly %>%
+  fabletools::model(
+    tslm  = fable::TSLM(mean_flow ~ trend() + season()),
+    arima = fable::ARIMA(mean_flow)
+  )
+
+fit_both %>%
+  fabletools::forecast(h = "2 years") %>%
+  fabletools::autoplot(flow_monthly, level = NULL) +
+  labs(
+    title = "TSLM vs. ARIMA Forecast — Monthly Mean Streamflow",
+    y     = "Mean Discharge (cfs)",
+    x     = NULL
+  )
+```
+
+`level = NULL` drops the shading so both forecasts are easier to compare as lines.
+
+We can also compare how well each model fit the *historical* data using accuracy metrics:
+
+```{r}
+fit_both %>% fabletools::accuracy()
+```
+
+- **RMSE** (Root Mean Squared Error) and **MAE** (Mean Absolute Error) are both in the original units (cfs). Lower is better.
+- **MAPE** (Mean Absolute Percentage Error) expresses error as a percentage of the observed value — useful for comparing across different scales.
+
+Which model fits the historical data better? Does a better historical fit necessarily mean a better forecast?
+
+---
+
 # Your turn
 
 Choose one of the following tasks with the remaining time. Compare your results with classmates.
@@ -492,18 +584,21 @@ Some Ohio gauges to try if you don't want to search:
 
 ---
 
-**Option 2 — Try a different model**
+**Option 2 — Dig deeper into the model comparison**
 
-Go back to the monthly Cuyahoga data. Fit an ARIMA model instead of TSLM:
+Look at the `accuracy()` output from `fit_both`. Which model has lower RMSE? Now look at the residuals of the ARIMA model — are they closer to random noise than the TSLM residuals?
 
 ```{r eval=FALSE}
-fit_arima <- flow_monthly %>%
-  fabletools::model(
-    arima = fable::ARIMA(mean_flow)
-  )
+# Residual plot for ARIMA
+fit_arima %>%
+  fabletools::augment() %>%
+  ggplot(aes(x = ym, y = .resid)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "ARIMA Residuals", y = "Residual (cfs)", x = NULL)
 ```
 
-Produce the same observed vs. fitted and forecast plots. How do the two models compare? Which do you prefer and why?
+A good model should have residuals that look like random noise — no obvious patterns, no trend, no seasonality left over. Does the ARIMA residual plot look more "random" than the TSLM residual plot? What does that tell you?
 
 ---
 
@@ -520,6 +615,6 @@ Today we covered:
 - **`tsibble`** — the tidy time series data structure
 - **Visualization** — time plots, seasonal plots, subseries plots, ACF
 - **Decomposition** — separating trend, seasonality, and remainder with STL
-- **Modeling** — fitting a simple trend + seasonality model and forecasting
+- **Modeling** — TSLM (explicit trend + seasonal dummies) and ARIMA (learned from the data's autocorrelation structure), with forecasts and accuracy comparison
 
 The tidyverts ecosystem (`tsibble` + `feasts` + `fable`) has a lot more to offer. If you want to go deeper, Rob Hyndman's free textbook [Forecasting: Principles and Practice (3rd ed.)](https://otexts.com/fpp3/) is the best resource and uses exactly these packages.
