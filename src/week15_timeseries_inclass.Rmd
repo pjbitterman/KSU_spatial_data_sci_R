@@ -1,0 +1,350 @@
+---
+title: "Week 15: Introduction to Time Series Analysis"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+---
+
+# Today's plan
+
+1. Brief framing: what makes time series data special
+2. Getting environmental data with `dataRetrieval`
+3. The `tsibble`: a tidy time series object
+4. Visualization (several kinds)
+5. Decomposition: trend, seasonality, remainder
+6. A simple model and forecast
+7. Your turn
+
+---
+
+# Packages
+
+Today we're using the **tidyverts** ecosystem — a tidyverse-native set of packages for time series work developed by Rob Hyndman's group.
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dataRetrieval)  # USGS water data
+library(tsibble)        # tidy time series data structure
+library(feasts)         # visualization + decomposition
+library(fable)          # forecasting models
+library(lubridate)
+```
+
+---
+
+# What makes time series data special?
+
+Most statistical methods assume observations are **independent** of each other. Time series data violates this: yesterday's river flow strongly predicts today's river flow. This dependence is called **autocorrelation**, and it's both a challenge and a tool.
+
+We'll try to decompose any time series into three components:
+
+- **Trend** — long-term increase or decrease
+- **Seasonality** — regular, repeating patterns (e.g., annual cycles)
+- **Remainder** — what's left after accounting for trend and seasonality
+
+Think of it like: *data = trend + seasonality + remainder*
+
+### Quick discussion
+
+Before we look at any data: if you were measuring streamflow on a river in Northeast Ohio, what kind of trend and seasonal pattern would you expect? Why?
+
+---
+
+# Getting data: USGS streamflow
+
+The `dataRetrieval` package provides direct access to USGS water data. We'll look at streamflow on the **Cuyahoga River at Independence, OH** — just downstream from us.
+
+```{r}
+site_no      <- "04208000"   # Cuyahoga River at Independence, OH
+parameter_cd <- "00060"      # discharge, in cubic feet per second (cfs)
+
+raw_flow <- dataRetrieval::readNWISdv(
+  siteNumbers = site_no,
+  parameterCd = parameter_cd,
+  startDate   = "2000-01-01",
+  endDate     = "2023-12-31"
+)
+
+head(raw_flow)
+```
+
+**Question**: What variables do you see? What do you think `X_00060_00003` means? What about the `_cd` column?
+
+```{r}
+# The package has a helper to rename columns to something readable
+flow_clean <- raw_flow %>%
+  dataRetrieval::renameNWISColumns() %>%
+  dplyr::select(Date, Flow) %>%
+  dplyr::filter(!is.na(Flow))
+
+head(flow_clean)
+```
+
+How many observations do we have?
+
+```{r}
+nrow(flow_clean)
+```
+
+**Question**: Is that about what you'd expect for daily data from 2000–2023? Do the math.
+
+---
+
+# The `tsibble`: a tidy time series object
+
+A **tsibble** is like a tibble, but with an explicit time **index** and (optionally) a grouping **key**. The index tells the package how observations are ordered in time and infers the interval automatically.
+
+```{r}
+flow_ts <- flow_clean %>%
+  tsibble::as_tsibble(index = Date)
+
+flow_ts
+```
+
+**Question**: What does tsibble report for the interval? Does that match what we pulled?
+
+---
+
+# Visualization
+
+## The basic time series plot
+
+```{r}
+flow_ts %>%
+  feasts::autoplot(Flow) +
+  labs(
+    title = "Daily Streamflow — Cuyahoga River at Independence, OH",
+    y     = "Discharge (cfs)",
+    x     = NULL
+  )
+```
+
+What do you notice? Any obvious trend? Seasonality? Large spikes?
+
+## Aggregate to monthly
+
+Daily data for 24 years is noisy. Monthly means will make seasonal patterns clearer and keep our models fast.
+
+```{r}
+flow_monthly <- flow_clean %>%
+  dplyr::mutate(ym = tsibble::yearmonth(Date)) %>%
+  dplyr::group_by(ym) %>%
+  dplyr::summarise(mean_flow = mean(Flow, na.rm = TRUE)) %>%
+  tsibble::as_tsibble(index = ym)
+
+flow_monthly
+```
+
+```{r}
+flow_monthly %>%
+  feasts::autoplot(mean_flow) +
+  labs(
+    title = "Monthly Mean Streamflow — Cuyahoga River at Independence, OH",
+    y     = "Mean Discharge (cfs)",
+    x     = NULL
+  )
+```
+
+How does this compare to the daily plot? What's easier or harder to see at monthly resolution?
+
+## Seasonal plot
+
+This plots each year as its own line, all aligned on the same x-axis (month of year).
+
+```{r}
+flow_monthly %>%
+  feasts::gg_season(mean_flow, labels = "both") +
+  labs(
+    title = "Seasonal Plot — Monthly Mean Streamflow",
+    y     = "Mean Discharge (cfs)"
+  )
+```
+
+**Questions**:
+
+1. Which months consistently have the highest flow? Lowest?
+2. How consistent is the seasonal pattern across years?
+3. Can you identify any years that look unusual? What might explain them?
+
+## Subseries plot
+
+Another way to look at seasonality: one panel per month, showing how that month's values change across years.
+
+```{r}
+flow_monthly %>%
+  feasts::gg_subseries(mean_flow) +
+  labs(
+    title = "Subseries Plot — Monthly Mean Streamflow",
+    y     = "Mean Discharge (cfs)"
+  )
+```
+
+The blue horizontal line in each panel is the mean for that month. What does this view tell you that the seasonal plot didn't?
+
+## Autocorrelation
+
+The ACF (Autocorrelation Function) measures how correlated each observation is with its own past values — at different lag distances.
+
+```{r}
+flow_monthly %>%
+  feasts::ACF(mean_flow, lag_max = 36) %>%
+  feasts::autoplot() +
+  labs(title = "Autocorrelation Function — Monthly Mean Streamflow")
+```
+
+**Questions**:
+
+1. What do the blue dashed lines represent?
+2. At lag 1 the correlation is strongly positive — what does that mean in plain language?
+3. What pattern do you see at lags 12, 24, 36? Why does that make sense given the data?
+
+---
+
+# Decomposition
+
+STL (Seasonal and Trend decomposition using Loess) separates our time series into its component parts. It's robust to outliers and flexible about the shape of the trend and seasonal components.
+
+```{r}
+dcmp <- flow_monthly %>%
+  fabletools::model(
+    stl = feasts::STL(mean_flow ~ trend(window = 21) + season(window = "periodic"))
+  )
+
+dcmp %>%
+  fabletools::components() %>%
+  feasts::autoplot() +
+  labs(title = "STL Decomposition — Monthly Mean Streamflow")
+```
+
+Look at each panel:
+
+- **data** — original series
+- **trend** — long-term direction (smoothed out the seasonality)
+- **season_year** — repeating annual cycle
+- **remainder** — what's left over after removing trend and season
+
+**Questions**:
+
+1. Is there a long-term trend in streamflow over this period? What direction?
+2. How large is the seasonal component relative to the trend? (Hint: look at the y-axis scales)
+3. The grey bars on the right side of each panel are deliberately the same height — what is their purpose?
+4. What might explain large spikes in the remainder component?
+
+---
+
+# A simple model and forecast
+
+We'll use a **Time Series Linear Model** (`TSLM`). Think of it as `lm()` but aware of the time structure. We'll include a linear trend term and monthly seasonal dummies.
+
+```{r}
+fit <- flow_monthly %>%
+  fabletools::model(
+    tslm = fable::TSLM(mean_flow ~ trend() + season())
+  )
+
+tidy(fit)
+```
+
+**Questions**:
+
+1. What does the `trend()` coefficient tell you? What are its units?
+2. There are seasonal coefficients — how would you interpret the one for `season()year2` (February)?
+3. The model has a reference category for season — which month is it, and how can you tell?
+
+## Model fit: observed vs. fitted
+
+```{r}
+fit %>%
+  fabletools::augment() %>%
+  ggplot(aes(x = ym)) +
+  geom_line(aes(y = mean_flow, color = "Observed")) +
+  geom_line(aes(y = .fitted,   color = "Fitted")) +
+  scale_color_manual(values = c("Observed" = "gray50", "Fitted" = "steelblue")) +
+  labs(
+    title = "Observed vs. Fitted — TSLM",
+    y     = "Mean Discharge (cfs)",
+    x     = NULL,
+    color = NULL
+  )
+```
+
+Where does the model fit well? Where does it struggle? What does that tell you about the model's assumptions?
+
+## Forecast
+
+```{r}
+fc <- fit %>%
+  fabletools::forecast(h = "2 years")
+
+fc %>%
+  fabletools::autoplot(flow_monthly, level = c(80, 95)) +
+  labs(
+    title = "2-Year Forecast — Monthly Mean Streamflow",
+    y     = "Mean Discharge (cfs)",
+    x     = NULL
+  )
+```
+
+The shaded bands are **prediction intervals** (80% and 95%).
+
+**Questions**:
+
+1. Does the forecast look reasonable? Does it match your intuition from the seasonal plot?
+2. What does the *width* of the prediction intervals tell you?
+3. What important things does this model NOT account for? What are its real-world limitations?
+
+---
+
+# Your turn
+
+Choose one of the following tasks with the remaining time. Compare your results with classmates.
+
+---
+
+**Option 1 — Try a different gauge**
+
+Find a USGS site number for a river you're interested in (use the [USGS Water Resources site](https://waterdata.usgs.gov/nwis) to find a site). Pull the data, convert to a monthly tsibble, and recreate at minimum: the seasonal plot, ACF, and decomposition.
+
+Some Ohio gauges to try if you don't want to search:
+
+| Site | Description |
+|------|-------------|
+| `04208504` | Cuyahoga River at Kent, OH |
+| `04212100` | Grand River at Painesville, OH |
+| `04208600` | Mahoning River at Youngstown, OH |
+
+---
+
+**Option 2 — Try a different model**
+
+Go back to the monthly Cuyahoga data. Fit an ARIMA model instead of TSLM:
+
+```{r eval=FALSE}
+fit_arima <- flow_monthly %>%
+  fabletools::model(
+    arima = fable::ARIMA(mean_flow)
+  )
+```
+
+Produce the same observed vs. fitted and forecast plots. How do the two models compare? Which do you prefer and why?
+
+---
+
+**Option 3 — Dig into the trend**
+
+The decomposition suggested a possible trend. Is it statistically meaningful? Look at the `tidy(fit)` output again. What is the trend coefficient, its standard error, and its p-value? Write 2-3 sentences interpreting the result for a non-technical audience.
+
+---
+
+# Wrapping up
+
+Today we covered:
+
+- **`tsibble`** — the tidy time series data structure
+- **Visualization** — time plots, seasonal plots, subseries plots, ACF
+- **Decomposition** — separating trend, seasonality, and remainder with STL
+- **Modeling** — fitting a simple trend + seasonality model and forecasting
+
+The tidyverts ecosystem (`tsibble` + `feasts` + `fable`) has a lot more to offer. If you want to go deeper, Rob Hyndman's free textbook [Forecasting: Principles and Practice (3rd ed.)](https://otexts.com/fpp3/) is the best resource and uses exactly these packages.
