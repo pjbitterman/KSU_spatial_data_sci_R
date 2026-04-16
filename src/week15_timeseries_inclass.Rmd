@@ -258,6 +258,13 @@ Try changing `month == 3` to another month. Does every month show the same direc
 
 The ACF (Autocorrelation Function) measures how correlated each observation is with its own past values — at different lag distances.
 
+What the ACF values actually mean, in plain English:
+
+- The ACF value at **lag 1** answers: "If I know this month's flow, how well can I predict *next* month's flow?" A value near 1 means very well; near 0 means barely at all.
+- The ACF value at **lag 12** answers: "How similar is this month's flow to the flow from *12 months ago* (same month, last year)?" A value near 1 means the same month repeats reliably year after year.
+- An ACF value of **0** means knowing the past observation at that lag tells you nothing about the current value — the two are unrelated.
+- ACF values are just **correlation coefficients** (ranging −1 to 1), so all the intuition you already have about correlation applies. The only difference is that both variables being correlated are the *same series*, just shifted in time.
+
 ```{r}
 flow_monthly %>%
   feasts::ACF(mean_flow, lag_max = 36) %>%
