@@ -55,7 +55,7 @@ library(spdep)   # needed for Task 2 (Moran/LISA)
 
 *Reference: leaflet docs — `addPolygons()`, `colorBin()`, `addLegend()`*
 
-In Lab 2, Task 2.3, you created a choropleth of Ohio counties shaded by the total cost of BMPs funded/implemented in each county. Here you will recreate that map in Leaflet.
+In Lab 2, Task 2.3, you created a choropleth of Chesapeake Bay Watershed counties shaded by the total cost of BMPs funded/implemented in each county. Here you will recreate that map in Leaflet.
 
 ### 1.1 — Reload and prepare the data
 
@@ -148,7 +148,7 @@ Build the Leaflet map with the following requirements:
 
 *Reference: leaflet docs — `addLayersControl()` with overlayGroups, your choice of other features*
 
-In Lab 4, Task 2 (and echoed in Lab 5, Task 5), you created an original map combining vector and raster data, representing both a social and an environmental process. Here you will recreate that concept in Leaflet.
+In Lab 5, Task 5, you created an original map combining vector and raster data, representing both a social and an environmental process. Here you will recreate that concept in Leaflet.
 
 *Note: Leaflet handles raster data differently than `tmap`. The `addRasterImage()` function in the `leaflet` package can display projected rasters, but requires the `raster` package (not `terra`) or conversion. An alternative is to represent the "environmental process" through a different vector layer (e.g., watersheds, land cover categories as polygons) if raster integration proves difficult. Document your approach in a comment.*
 
