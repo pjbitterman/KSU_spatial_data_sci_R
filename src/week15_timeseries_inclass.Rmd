@@ -19,15 +19,22 @@ output:
 
 ---
 
+# Source and inspiration:
+
+[Forecasting: Principles and Practice (3rd ed.)](https://otexts.com/fpp3/), by Rob J Hyndman and George Athanasopoulos.
+
+---
+
 # Packages
 
-Today we're using the **tidyverts** ecosystem — a tidyverse-native set of packages for time series work developed by Rob Hyndman's group.
+Today we're using the **tidyverts** ecosystem — a tidyverse-native set of packages for time series work.
 
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 library(dataRetrieval)  # USGS water data
 library(tsibble)        # tidy time series data structure
-library(feasts)         # visualization + decomposition
+library(feasts)         # decomposition + ACF
+library(ggtime)         # time series visualization (split from feasts 0.4.2)
 library(fable)          # forecasting models
 library(lubridate)
 ```
@@ -36,27 +43,53 @@ library(lubridate)
 
 # What makes time series data special?
 
-Most statistical methods assume observations are **independent** of each other. Time series data violates this: yesterday's river flow strongly predicts today's river flow. This dependence is called **autocorrelation**, and it's both a challenge and a tool.
+Most statistical methods assume observations are **independent** of each other — knowing one data point tells you nothing about the next. That assumption breaks down completely for data collected over time. Yesterday's river flow strongly predicts today's river flow. Last January's streamflow is a decent predictor of this January's. This temporal dependence is called **autocorrelation**, and it's both a challenge and a tool.
 
-We'll try to decompose any time series into three components:
+## Why this matters
 
-- **Trend** — long-term increase or decrease
-- **Seasonality** — regular, repeating patterns (e.g., annual cycles)
-- **Remainder** — what's left after accounting for trend and seasonality
+A lot of data in environmental and spatial science is collected repeatedly over time: 
+- streamflow measured daily for decades
+- air quality readings every hour
+- land surface temperature from satellite passes
+- species counts from annual surveys. 
+
+The *temporal structure* in that data is **not** noise to be discarded. Rather, it's useful information about the stability of hte process. Time series methods let us extract this information.
+
+A practical reason for learning/using these methods: 
+- If we ignore autocorrelation and apply standard regression or t-tests to time series data, the standard errors come out *too small*
+- We end up thinking your results are more precise and statistically significant than reality
+- Specialized time series methods exist  because they account for this structure rather than pretending it isn't there
+
+## Stationarity
+
+Many time series methods require the series to be **stationary** — meaning its statistical properties (mean, variance, correlation structure) don't change over time. A series with a long-term trend is *not* stationary: its mean is drifting. A series with strong seasonality is *not* stationary in the same way: the expected value in April is systematically higher than in August.
+
+Is this a problem? Maybe, maybe not, but the solution is what makes time series analysis interesting: we can *decompose* the series into its non-stationary parts and analyze what remains.
+
+## The decomposition framework
+
+We will separate any time series into three components:
+
+1. **Trend** — long-term increase or decrease (slow, persistent drift)
+2. **Seasonality** — regular, repeating patterns tied to the calendar (annual cycles, weekly cycles, etc.)
+3. **Remainder** — what's left; ideally, random noise with no remaining structure
 
 Think of it like: *data = trend + seasonality + remainder*
+
+Once decomposed, you can ask:
+1. Is there evidence of a long-term trend? 
+2. How large is the seasonal signal relative to that trend? 
+3. Are the "leftovers" truly random, or is there still structure a model might capture?
 
 ### Quick discussion
 
 Before we look at any data: if you were measuring streamflow on a river in Northeast Ohio, what kind of trend and seasonal pattern would you expect? Why?
 
-> **Likely answers:** For seasonality, expect high flows in late winter and spring (snowmelt + spring rainfall in March–May) and low flows in late summer (August–September, when evapotranspiration is high and precipitation is more sporadic). For trend, it's genuinely hard to predict without looking — flows might be increasing due to more intense precipitation events, decreasing due to water withdrawals or land-use change, or roughly flat. This is a good reminder that intuition should always be checked against data.
-
 ---
 
-# Getting data: USGS streamflow
+# Accessing today's data: USGS streamflow
 
-The `dataRetrieval` package provides direct access to USGS water data. We'll look at streamflow on the **Cuyahoga River at Independence, OH** — just downstream from us.
+The `dataRetrieval` package provides direct access to USGS water data. We'll look at streamflow on the **Cuyahoga River at Independence, OH**.
 
 ```{r}
 site_no      <- "04208000"   # Cuyahoga River at Independence, OH
@@ -73,7 +106,7 @@ raw_flow <- dataRetrieval::readNWISdv(
 head(raw_flow)
 ```
 
-**Question**: What variables do you see? What do you think `X_00060_00003` means? What about the `_cd` column?
+**Question**: What variables do you see?
 
 The column name encodes USGS codes: `00060` = discharge parameter, `00003` = daily mean statistic. The `_cd` column is a data-quality flag. Let's look at what values it actually contains:
 
@@ -128,13 +161,19 @@ flow_ts <- flow_clean %>%
 flow_ts
 ```
 
-The header line of the output above shows the interval tsibble detected — look for `[1D]`. Yes, that matches: we pulled daily values. Tsibble infers the interval automatically from the spacing of the index. If you had gaps, it would error out rather than silently skip them — which is actually useful.
+The header line of the output above shows the interval tsibble detected — look for `[1D]`. Yes, that aligns with expectations: we pulled daily values. 
+
+Tsibble infers the interval automatically from the spacing of the index. If you had gaps, it would error out rather than silently skip them — which is useful.
 
 ---
 
 # Visualization
 
 ## The basic time series plot
+
+Here, we will use `feasts` and `ggtime` plotting functions rather than building everything from scratch in ggplot. As of feasts 0.4.2, visualization functions like `gg_season()` and `gg_subseries()` moved to the `ggtime` package, while analytical functions like `ACF()` and `STL()` stayed in `feasts`.
+- Both packages understand the tsibble structure: the time index goes on the x-axis automatically, and lags and seasonal periods are handled correctly
+- Every plot returns a regular ggplot object, so `+ labs()`, `+ theme()`, etc. all work normally
 
 ```{r}
 flow_ts %>%
@@ -146,9 +185,13 @@ flow_ts %>%
   )
 ```
 
+**STOP**
+
 What do you notice? Any obvious trend? Seasonality? Large spikes?
 
-The large upward spikes are flood events. There's a seasonal rhythm, but it's hard to characterize precisely at daily resolution — the noise drowns it out. A long-term trend, if present, is essentially invisible here. We'll aggregate to monthly to make the signal easier to see.
+The large upward spikes are flood events. There's a seasonal rhythm, but it's hard to characterize at daily resolution — the noise drowns it out.
+
+ A long-term trend, if present, is (more or less) invisible here. Let's aggregate to monthly to make the signal easier to see.
 
 ## Aggregate to monthly
 
@@ -174,9 +217,12 @@ flow_monthly %>%
   )
 ```
 
-How does this compare to the daily plot? What's easier or harder to see at monthly resolution?
+**How does this compare to the daily plot? What's easier or harder to see at monthly resolution?**
 
-The seasonal pattern is much clearer — regular annual peaks and troughs are no longer buried in noise. The trade-off: individual flood events are averaged away. For understanding long-term structure (seasonality, trend), monthly is appropriate. For flood frequency or magnitude, you'd stay with daily.
+
+The seasonal pattern is much clearer — regular annual peaks and troughs are no longer buried in noise. 
+
+Trade-off: individual flood events are averaged away. For understanding long-term structure (seasonality, trend), monthly is appropriate. For flood frequency or magnitude, you want to stay with daily.
 
 ## Seasonal plot
 
@@ -184,7 +230,7 @@ This plots each year as its own line, all aligned on the same x-axis (month of y
 
 ```{r}
 flow_monthly %>%
-  feasts::gg_season(mean_flow, labels = "both") +
+  ggtime::gg_season(mean_flow, labels = "both") +
   labs(
     title = "Seasonal Plot — Monthly Mean Streamflow",
     y     = "Mean Discharge (cfs)"
@@ -219,7 +265,7 @@ flow_monthly %>%
   arrange(desc(annual_mean))
 ```
 
-Years at the top and bottom of this table are the ones that stand out as lines in the seasonal plot. The seasonal shape stays consistent year to year — the peak is almost always spring and the trough late summer — but the overall magnitude varies substantially.
+Years at the top and bottom of this table are the ones that stand out as lines in the seasonal plot. The seasonal shape stays consistent(ish) year to year. The peak is almost always spring and the trough late summer — but the overall magnitude varies substantially.
 
 ## Subseries plot
 
@@ -227,7 +273,7 @@ Another way to look at seasonality: one panel per month, showing how that month'
 
 ```{r}
 flow_monthly %>%
-  feasts::gg_subseries(mean_flow) +
+  ggtime::gg_subseries(mean_flow) +
   labs(
     title = "Subseries Plot — Monthly Mean Streamflow",
     y     = "Mean Discharge (cfs)"
@@ -328,7 +374,7 @@ Look at each panel:
 
 1. Is there a long-term trend in streamflow over this period? What direction?
 2. How large is the seasonal component relative to the trend? (Hint: look at the y-axis scales)
-3. The grey bars on the right side of each panel are deliberately the same height — what is their purpose?
+3. The grey bars on the left side of each panel are deliberately the same height — what is their purpose?
 4. What might explain large spikes in the remainder component?
 
 For questions 1 and 2, we can extract the decomposition components and compare their ranges directly:
@@ -357,7 +403,7 @@ dcmp_components %>%
   head(10)
 ```
 
-Look up those dates. They likely correspond to major flood events, drought years, or other unusual conditions. The grey bars in the decomposition plot serve as a visual scale reference: since all bars are the same physical height but span different y-axis ranges, you can visually compare how much variation each component actually accounts for.
+You can look up those dates. They likely correspond to major flood events, drought years, or other unusual conditions. The grey bars in the decomposition plot serve as a visual scale reference: since all bars are the same physical height but span different y-axis ranges, you can visually compare how much variation each component actually accounts for.
 
 ---
 
@@ -599,12 +645,6 @@ fit_arima %>%
 ```
 
 A good model should have residuals that look like random noise — no obvious patterns, no trend, no seasonality left over. Does the ARIMA residual plot look more "random" than the TSLM residual plot? What does that tell you?
-
----
-
-**Option 3 — Dig into the trend**
-
-The decomposition suggested a possible trend. Is it statistically meaningful? Look at the `tidy(fit)` output again. What is the trend coefficient, its standard error, and its p-value? Write 2-3 sentences interpreting the result for a non-technical audience.
 
 ---
 
