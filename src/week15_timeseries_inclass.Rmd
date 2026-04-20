@@ -43,7 +43,9 @@ library(lubridate)
 
 # What makes time series data special?
 
-Most statistical methods assume observations are **independent** of each other — knowing one data point tells you nothing about the next. That assumption breaks down completely for data collected over time. Yesterday's river flow strongly predicts today's river flow. Last January's streamflow is a decent predictor of this January's. This temporal dependence is called **autocorrelation**, and it's both a challenge and a tool.
+- Most statistical methods assume observations are **independent** of each other — knowing one data point tells you nothing about the next. 
+- This assumption breaks down completely for data collected over time. Yesterday's river flow strongly predicts today's river flow. Last January's streamflow is a decent predictor of this January's. 
+- This temporal dependence is called **autocorrelation**, and it can be a challenge AND a tool
 
 ## Why this matters
 
@@ -53,12 +55,15 @@ A lot of data in environmental and spatial science is collected repeatedly over 
 - land surface temperature from satellite passes
 - species counts from annual surveys. 
 
-The *temporal structure* in that data is **not** noise to be discarded. Rather, it's useful information about the stability of hte process. Time series methods let us extract this information.
+The *temporal structure* in that data is **not** noise to be discarded. Intead, it can be useful information about the stability of the process we're studying. Time series methods let us extract this information.
 
 A practical reason for learning/using these methods: 
 - If we ignore autocorrelation and apply standard regression or t-tests to time series data, the standard errors come out *too small*
 - We end up thinking your results are more precise and statistically significant than reality
 - Specialized time series methods exist  because they account for this structure rather than pretending it isn't there
+
+*Sound familiar?*
+
 
 ## Stationarity
 
@@ -84,6 +89,8 @@ Once decomposed, you can ask:
 ### Quick discussion
 
 Before we look at any data: if you were measuring streamflow on a river in Northeast Ohio, what kind of trend and seasonal pattern would you expect? Why?
+
+> **With your partner (3 min):** Sketch the shape of a full year of streamflow on paper — just a rough curve, no numbers needed. Where are the peaks? The troughs? Then make a second sketch showing what you'd expect a 20-year trend to look like. Be ready to share one thing you disagreed on.
 
 ---
 
@@ -189,7 +196,10 @@ flow_ts %>%
 
 What do you notice? Any obvious trend? Seasonality? Large spikes?
 
-The large upward spikes are flood events. There's a seasonal rhythm, but it's hard to characterize at daily resolution — the noise drowns it out.
+### Question - what do the large "spikes" represent?
+
+
+There's a seasonal rhythm, but it's hard to characterize at daily resolution — the noise drowns it out.
 
  A long-term trend, if present, is (more or less) invisible here. Let's aggregate to monthly to make the signal easier to see.
 
@@ -207,6 +217,9 @@ flow_monthly <- flow_clean %>%
 flow_monthly
 ```
 
+
+Plot it - notice the call. What does `autoplot` do???
+
 ```{r}
 flow_monthly %>%
   feasts::autoplot(mean_flow) +
@@ -218,6 +231,21 @@ flow_monthly %>%
 ```
 
 **How does this compare to the daily plot? What's easier or harder to see at monthly resolution?**
+
+> **With your partner:** Modify the aggregation chunk to produce quarterly instead of monthly data, then re-run the plot. What do you gain and lose compared to monthly? Which aggregation would you use if your main question was about long-term trend vs. seasonal shape?
+>
+> *Hints:*
+> - *`tsibble` has a `yearquarter()` function that works just like `yearmonth()` — swap it in the `mutate()` call*
+> - *Rename `ym` to `yq` everywhere in the chunk so the variable name still makes sense*
+> - *Update the `as_tsibble(index = ym)` line to match your new variable name*
+> - *Then update the `autoplot()` call to use `yq` and `mean_flow`*
+
+Try it using the below code block:
+
+```{r}
+
+
+```
 
 
 The seasonal pattern is much clearer — regular annual peaks and troughs are no longer buried in noise. 
@@ -236,6 +264,20 @@ flow_monthly %>%
     y     = "Mean Discharge (cfs)"
   )
 ```
+
+
+Is this useful???
+
+> **With your partner:** Add a `filter(year(ym) >= 2010)` before the `gg_season()` call and re-run the plot. Does the seasonal shape look the same in the recent record as in the full record? Does any year stand out differently than it did before?
+
+
+Try it here:
+
+```{r}
+
+
+```
+
 
 **Questions**:
 
@@ -298,7 +340,7 @@ flow_monthly %>%
        y = "Mean Discharge (cfs)", x = "Year")
 ```
 
-Try changing `month == 3` to another month. Does every month show the same direction of change?
+**With your partner:** Each pair picks a different month — change `month == 3` to your chosen month and re-run the chunk. Does flow in your month show the same direction of change as March? Come back ready to say which month you picked and whether the trend surprised you.
 
 ## Autocorrelation
 
@@ -370,7 +412,7 @@ Look at each panel:
 - **season_year** — repeating annual cycle
 - **remainder** — what's left over after removing trend and season
 
-**Questions**:
+**With your partner (3 min):** Look at the four panels and answer these before we discuss as a class:
 
 1. Is there a long-term trend in streamflow over this period? What direction?
 2. How large is the seasonal component relative to the trend? (Hint: look at the y-axis scales)
@@ -442,7 +484,11 @@ The `trend()` coefficient is the estimated average change in mean monthly discha
 tidy(fit) %>% filter(stringr::str_detect(term, "season"))
 ```
 
-Notice the output starts at `season()year2` — that's February. January (`year1`) is absent because it's the **reference category**, absorbed into the intercept. Every seasonal coefficient is the expected difference between that month and January, holding the trend constant. A positive value means that month runs higher than January on average; negative means lower.
+Notice the output starts at `season()year2` — that's February. 
+
+January (`year1`) is absent because it's the **reference category**, absorbed into the intercept. 
+
+Every seasonal coefficient is the expected difference between that month and January, holding the trend constant. A positive value means that month runs higher than January on average; negative means lower.
 
 ## Model fit: observed vs. fitted
 
