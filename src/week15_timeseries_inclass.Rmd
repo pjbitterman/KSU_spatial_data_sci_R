@@ -49,18 +49,18 @@ library(lubridate)
 
 ## Why this matters
 
-A lot of data in environmental and spatial science is collected repeatedly over time: 
+A LOT of data in environmental and spatial science is collected repeatedly over time: 
 - streamflow measured daily for decades
 - air quality readings every hour
 - land surface temperature from satellite passes
-- species counts from annual surveys. 
+- species counts from annual surveys 
 
 The *temporal structure* in that data is **not** noise to be discarded. Intead, it can be useful information about the stability of the process we're studying. Time series methods let us extract this information.
 
-A practical reason for learning/using these methods: 
+Practical reasons for learning/using these methods: 
 - If we ignore autocorrelation and apply standard regression or t-tests to time series data, the standard errors come out *too small*
 - We end up thinking your results are more precise and statistically significant than reality
-- Specialized time series methods exist  because they account for this structure rather than pretending it isn't there
+- Specialized time series methods exist BECAUSE they account for this structure rather than pretending it isn't there
 
 *Sound familiar?*
 
@@ -170,7 +170,7 @@ flow_ts
 
 The header line of the output above shows the interval tsibble detected — look for `[1D]`. Yes, that aligns with expectations: we pulled daily values. 
 
-Tsibble infers the interval automatically from the spacing of the index. If you had gaps, it would error out rather than silently skip them — which is useful.
+`tsibble` infers the interval automatically from the spacing of the index. If you had gaps, it would error out rather than silently skip them — which is useful.
 
 ---
 
@@ -189,7 +189,8 @@ flow_ts %>%
     title = "Daily Streamflow — Cuyahoga River at Independence, OH",
     y     = "Discharge (cfs)",
     x     = NULL
-  )
+  ) +
+    theme_minimal() # see how you can add ggplot "stuff"?
 ```
 
 **STOP**
@@ -262,11 +263,11 @@ flow_monthly %>%
   labs(
     title = "Seasonal Plot — Monthly Mean Streamflow",
     y     = "Mean Discharge (cfs)"
-  )
+  ) + theme_minimal()
 ```
 
 
-Is this useful???
+Is this a useful plot???
 
 > **With your partner:** Add a `filter(year(ym) >= 2010)` before the `gg_season()` call and re-run the plot. Does the seasonal shape look the same in the recent record as in the full record? Does any year stand out differently than it did before?
 
@@ -462,6 +463,13 @@ fit <- flow_monthly %>%
 tidy(fit)
 ```
 
+A few things to notice in the output before we interpret:
+
+- `trend()` — a single numeric term counting months from the start of the series; its coefficient is the estimated change in flow per month
+- `season()year2` through `season()year12` — one dummy variable per month, where the number is the month index (2 = February, 3 = March, … 12 = December)
+- `season()year1` (January) is **missing on purpose** — it's the reference category, absorbed into the intercept; every other seasonal coefficient is the expected difference *relative to January*
+- `p.value` tells you whether each term is statistically distinguishable from zero; most seasonal dummies will be highly significant because the months are genuinely different from each other
+
 **Questions**:
 
 1. What does the `trend()` coefficient tell you? What are its units?
@@ -477,7 +485,14 @@ trend_coef
 trend_coef$estimate * 12
 ```
 
-The `trend()` coefficient is the estimated average change in mean monthly discharge (cfs) per month, after accounting for seasonality. Multiply by 12 for an annual rate.
+**Reading this output: **
+
+- the `estimate` of **0.362** means the model estimates flow increases by about 0.36 cfs per month on average, after accounting for seasonality
+- multiplied by 12, that's roughly **4.3 cfs per year**
+- However, the `p.value` of **0.390** is well above any conventional threshold — so this trend is not statistically distinguishable from zero
+
+**Implications and inference?**
+The river may be trending upward slightly, but the data don't provide enough signal to be confident. The `std.error` of 0.420 is actually *larger* than the estimate itself, which reinforces that uncertainty.
 
 ```{r}
 # The seasonal coefficients — all relative to the reference month
@@ -498,13 +513,13 @@ fit %>%
   ggplot(aes(x = ym)) +
   geom_line(aes(y = mean_flow, color = "Observed")) +
   geom_line(aes(y = .fitted,   color = "Fitted")) +
-  scale_color_manual(values = c("Observed" = "gray50", "Fitted" = "steelblue")) +
+  scale_color_manual(values = c("Observed" = "gray50", "Fitted" = "red")) +
   labs(
     title = "Observed vs. Fitted — TSLM",
     y     = "Mean Discharge (cfs)",
     x     = NULL,
     color = NULL
-  )
+  ) + theme_minimal()
 ```
 
 Where does the model fit well? Where does it struggle? What does that tell you about the model's assumptions?
