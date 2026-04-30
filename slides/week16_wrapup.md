@@ -1,9 +1,11 @@
 ---
 marp: true
+theme: ksu-ada
 size: 16:9 
 paginate: true
-#footer: Week 16.wrap-up
+footer: Week 16.wrap-up 
 ---
+
 
 # GEOG 4/5/7 9073: Environmental Analysis in R
 
